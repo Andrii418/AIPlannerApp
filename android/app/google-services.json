@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "646480575016",
+    "project_id": "aiplanerapp",
+    "storage_bucket": "aiplanerapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:646480575016:android:df81f46191fc883f11131d",
+        "android_client_info": {
+          "package_name": "com.smartplanner"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBk7rETGGSLFGtm8tselXBjNDpo7yMCnFE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
