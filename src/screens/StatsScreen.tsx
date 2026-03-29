@@ -27,10 +27,12 @@ const { width } = Dimensions.get('window');
 
 const StatsScreen = ({ isDarkMode, toggleDarkMode }: any) => {
 
-  const bgColor = isDarkMode ? Colors.darkBackground : '#F8FAFC';
+  // ZMIANA: bgColor ustawiamy na transparent, aby nie zasłaniał gradientu z App.tsx
+  const bgColor = 'transparent';
   const textColor = isDarkMode ? Colors.darkText : '#1E293B';
-  const cardColor = isDarkMode ? Colors.darkCard : Colors.white;
-  const borderColor = isDarkMode ? Colors.darkBorder : '#E2E8F0';
+  // Karty w trybie jasnym dostają lekką przezroczystość (Glassmorphism), by lepiej wyglądały na gradiencie
+  const cardColor = isDarkMode ? Colors.darkCard : 'rgba(255, 255, 255, 0.8)';
+  const borderColor = isDarkMode ? Colors.darkBorder : 'rgba(255, 255, 255, 0.5)';
   const subTextColor = isDarkMode ? '#94A3B8' : '#64748B';
 
   const stats = {
@@ -43,9 +45,13 @@ const StatsScreen = ({ isDarkMode, toggleDarkMode }: any) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        style={{ backgroundColor: 'transparent' }} // Wymuszenie przezroczystości ScrollView
+      >
 
         <View style={styles.header}>
           <View style={styles.headerTopRow}>
@@ -115,7 +121,7 @@ const StatsScreen = ({ isDarkMode, toggleDarkMode }: any) => {
             </View>
         </View>
 
-        <View style={[styles.streakCard, { backgroundColor: isDarkMode ? '#2D2D44' : '#FFF0E6' }]}>
+        <View style={[styles.streakCard, { backgroundColor: isDarkMode ? '#2D2D44' : 'rgba(255, 140, 0, 0.1)' }]}>
             <Target color="#FF8C00" size={24} />
             <Text style={[styles.streakText, { color: isDarkMode ? '#FFB366' : '#CC7000' }]}>
                 Utrzymujesz streak przez <Text style={{ fontWeight: '900' }}>{stats.streak} dni!</Text> 🔥

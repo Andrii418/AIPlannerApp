@@ -6,8 +6,12 @@ import { Colors } from '../theme';
 const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
 
+  // ZMIANA: Tło główne na transparent, aby widzieć gradient z App.tsx
+  const bgColor = 'transparent';
   const textColor = isDarkMode ? Colors.darkText : '#1E293B';
-  const cardColor = isDarkMode ? Colors.darkCard : Colors.white;
+  // ZMIANA: Karty z lekką przezroczystością dla lepszego efektu na gradiencie
+  const cardColor = isDarkMode ? Colors.darkCard : 'rgba(255, 255, 255, 0.8)';
+  const borderColor = isDarkMode ? Colors.darkBorder : 'rgba(255, 255, 255, 0.5)';
 
   const courses = [
     { id: '1', name: 'Matematyka', date: '15 marca 2026', hours: '4.0', progress: 33, topics: '1 z 3' },
@@ -15,7 +19,7 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
   ];
 
   const renderCourseList = () => (
-    <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScrollView contentContainerStyle={styles.scrollContent} style={{ backgroundColor: 'transparent' }}>
       <View style={styles.headerRow}>
         <View>
           <Text style={[styles.mainTitle, { color: textColor }]}>Planer Nauki</Text>
@@ -30,7 +34,7 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
       </View>
 
       {courses.map(course => (
-        <View key={course.id} style={[styles.courseCard, { backgroundColor: cardColor }]}>
+        <View key={course.id} style={[styles.courseCard, { backgroundColor: cardColor, borderColor: borderColor, borderWidth: 1 }]}>
           <View style={styles.cardTop}>
             <Text style={[styles.courseTitle, { color: textColor }]}>{course.name}</Text>
             <View style={styles.statusBadge}><Text style={styles.statusText}>Minął</Text></View>
@@ -46,7 +50,7 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
 
           <View style={styles.cardActions}>
             <TouchableOpacity style={styles.actionBtn} onPress={() => setSelectedCourse(course)}>
-              <Eye size={18} color="#1E293B" /><Text style={styles.actionBtnText}>Szczegóły</Text>
+              <Eye size={18} color={textColor} /><Text style={[styles.actionBtnText, { color: textColor }]}>Szczegóły</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionBtn}>
               <Trash2 size={18} color="#FF6B6B" /><Text style={[styles.actionBtnText, { color: '#FF6B6B' }]}>Usuń</Text>
@@ -59,11 +63,11 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
   );
 
   const renderDetails = () => (
-    <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScrollView contentContainerStyle={styles.scrollContent} style={{ backgroundColor: 'transparent' }}>
       <TouchableOpacity onPress={() => setSelectedCourse(null)}><Text style={styles.backBtn}>← Powrót</Text></TouchableOpacity>
-      <Text style={[styles.mainTitle, { color: textColor }]}>Planer Nauki</Text>
+      <Text style={[styles.mainTitle, { color: textColor }]}>Szczegóły Kursu</Text>
 
-      <View style={[styles.courseCard, { backgroundColor: cardColor }]}>
+      <View style={[styles.courseCard, { backgroundColor: cardColor, borderColor: borderColor, borderWidth: 1 }]}>
          <View style={styles.cardTop}>
             <Text style={[styles.courseTitle, { color: textColor }]}>{selectedCourse.name}</Text>
             <View style={styles.statusBadge}><Text style={styles.statusText}>Minął</Text></View>
@@ -74,25 +78,25 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
       </View>
 
       <View style={styles.statsGrid}>
-        <View style={[styles.smallStat, { backgroundColor: cardColor }]}><Text style={styles.statNum}>1/3</Text><Text style={styles.statLab}>Tematów</Text></View>
-        <View style={[styles.smallStat, { backgroundColor: cardColor }]}><Text style={styles.statNum}>4.0</Text><Text style={styles.statLab}>Godzin nauki</Text></View>
-        <View style={[styles.smallStat, { backgroundColor: cardColor }]}><Text style={[styles.statNum, { color: '#2ECC71' }]}>33%</Text><Text style={styles.statLab}>Ukończono</Text></View>
+        <View style={[styles.smallStat, { backgroundColor: cardColor, borderColor: borderColor, borderWidth: 1 }]}><Text style={[styles.statNum, {color: textColor}]}>1/3</Text><Text style={styles.statLab}>Tematów</Text></View>
+        <View style={[styles.smallStat, { backgroundColor: cardColor, borderColor: borderColor, borderWidth: 1 }]}><Text style={[styles.statNum, {color: textColor}]}>4.0</Text><Text style={styles.statLab}>Godziny</Text></View>
+        <View style={[styles.smallStat, { backgroundColor: cardColor, borderColor: borderColor, borderWidth: 1 }]}><Text style={[styles.statNum, { color: '#2ECC71' }]}>33%</Text><Text style={styles.statLab}>Gotowe</Text></View>
       </View>
 
       <TouchableOpacity style={styles.addHoursBtn}><Clock size={20} color="white" /><Text style={styles.addHoursText}>Dodaj godziny nauki</Text></TouchableOpacity>
 
       <Text style={[styles.sectionTitle, { color: textColor }]}>Tematy (0/3)</Text>
       {['Całki', 'Pochodne', 'Równania różniczkowe'].map((topic, i) => (
-        <View key={i} style={[styles.topicRow, { backgroundColor: i === 0 ? '#D1C4E9' : '#F3E5F5' }]}>
+        <View key={i} style={[styles.topicRow, { backgroundColor: i === 0 ? 'rgba(209, 196, 233, 0.6)' : 'rgba(243, 229, 245, 0.6)', borderColor: borderColor, borderWidth: 1 }]}>
           {i === 0 ? <CheckCircle2 size={24} color="#4CAF50" /> : <CheckCircle2 size={24} color="#64748B" />}
-          <Text style={styles.topicText}>{topic}</Text>
+          <Text style={[styles.topicText, { color: textColor }]}>{topic}</Text>
         </View>
       ))}
     </ScrollView>
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: isDarkMode ? Colors.darkBackground : '#E8EAF6' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }}>
       {selectedCourse ? renderDetails() : renderCourseList()}
       <View style={{ height: 80 }} />
     </SafeAreaView>
@@ -113,10 +117,10 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 5 },
   infoLabel: { color: '#64748B', fontSize: 13 },
   progressContainer: { marginTop: 15 },
-  progressBarBg: { height: 6, backgroundColor: '#E0E0E0', borderRadius: 3, marginBottom: 8 },
+  progressBarBg: { height: 6, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 3, marginBottom: 8 },
   progressBarFill: { height: 6, backgroundColor: '#7B61FF', borderRadius: 3 },
   progressText: { fontSize: 11, color: '#64748B', textAlign: 'right' },
-  cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 20, marginTop: 15, borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 10 },
+  cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 20, marginTop: 15, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)', paddingTop: 10 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   actionBtnText: { fontWeight: '700', fontSize: 14 },
   fab: { position: 'absolute', bottom: 20, right: 0, width: 60, height: 60, borderRadius: 30, backgroundColor: '#5152D6', justifyContent: 'center', alignItems: 'center', elevation: 5 },

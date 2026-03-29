@@ -28,10 +28,12 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
     { id: '2', text: 'Zintegrować Firebase', completed: false },
   ]);
 
-  const bgColor = isDarkMode ? Colors.darkBackground : '#F8FAFC';
+  // ZMIANA: bgColor na transparent, aby widzieć gradient z App.tsx
+  const bgColor = 'transparent';
   const textColor = isDarkMode ? Colors.darkText : '#1E293B';
-  const cardColor = isDarkMode ? Colors.darkCard : Colors.white;
-  const borderColor = isDarkMode ? Colors.darkBorder : '#E2E8F0';
+  // ZMIANA: Karty i input z lekką przezroczystością
+  const cardColor = isDarkMode ? Colors.darkCard : 'rgba(255, 255, 255, 0.8)';
+  const borderColor = isDarkMode ? Colors.darkBorder : 'rgba(255, 255, 255, 0.5)';
   const subTextColor = isDarkMode ? '#94A3B8' : '#64748B';
 
   const handleAddTask = () => {
@@ -84,7 +86,7 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -110,6 +112,7 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
           renderItem={renderItem}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContent}
+          style={{ backgroundColor: 'transparent' }} // Wymuszenie przezroczystości listy
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <LayoutGrid size={48} color={subTextColor} />
@@ -120,7 +123,7 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
 
         <View style={[styles.inputContainer, { backgroundColor: cardColor, borderTopColor: borderColor }]}>
           <TextInput
-            style={[styles.input, { color: textColor, backgroundColor: isDarkMode ? '#2A2A3C' : 'rgba(148, 163, 184, 0.05)' }]}
+            style={[styles.input, { color: textColor, backgroundColor: isDarkMode ? '#2A2A3C' : 'rgba(148, 163, 184, 0.1)' }]}
             placeholder="Co masz do zrobienia?"
             placeholderTextColor="#94A3B8"
             value={task}

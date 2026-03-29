@@ -29,10 +29,12 @@ const { width } = Dimensions.get('window');
 
 const TravelPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
 
-  const bgColor = isDarkMode ? Colors.darkBackground : '#F0F9FF';
+  // ZMIANA: bgColor na transparent, aby widzieć gradient z App.tsx
+  const bgColor = 'transparent';
   const textColor = isDarkMode ? Colors.darkText : '#1E293B';
-  const cardColor = isDarkMode ? Colors.darkCard : '#FFFFFF';
-  const borderColor = isDarkMode ? Colors.darkBorder : '#E2E8F0';
+  // ZMIANA: Karty z lekką przezroczystością (Glassmorphism)
+  const cardColor = isDarkMode ? Colors.darkCard : 'rgba(255, 255, 255, 0.8)';
+  const borderColor = isDarkMode ? Colors.darkBorder : 'rgba(255, 255, 255, 0.5)';
   const subTextColor = isDarkMode ? '#94A3B8' : '#64748B';
 
   const trips = [
@@ -49,9 +51,13 @@ const TravelPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        style={{ backgroundColor: 'transparent' }} // Wymuszenie przezroczystości ScrollView
+      >
 
         <View style={styles.header}>
           <View style={styles.headerTopRow}>
@@ -74,7 +80,7 @@ const TravelPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
           <TouchableOpacity
             key={trip.id}
             activeOpacity={0.9}
-            style={[styles.tripCard, { backgroundColor: cardColor, borderColor: borderColor, borderWidth: isDarkMode ? 1 : 0 }]}
+            style={[styles.tripCard, { backgroundColor: cardColor, borderColor: borderColor, borderWidth: 1 }]}
           >
             <ImageBackground
               source={{ uri: trip.image }}
@@ -106,14 +112,14 @@ const TravelPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
                 </View>
               </View>
 
-              <View style={[styles.divider, { backgroundColor: isDarkMode ? '#2A2A3C' : '#F1F5F9' }]} />
+              <View style={[styles.divider, { backgroundColor: isDarkMode ? '#2A2A3C' : 'rgba(0,0,0,0.05)' }]} />
 
               <View style={styles.footerRow}>
                 <View style={styles.budgetBox}>
                   <Text style={[styles.label, { color: isDarkMode ? '#64748B' : '#94A3B8' }]}>Budżet</Text>
                   <Text style={[styles.value, { color: Colors.tertiary }]}>{trip.budget}</Text>
                 </View>
-                <TouchableOpacity style={[styles.detailsBtn, { backgroundColor: isDarkMode ? '#2A2A3C' : '#F1F5F9' }]}>
+                <TouchableOpacity style={[styles.detailsBtn, { backgroundColor: isDarkMode ? '#2A2A3C' : 'rgba(0,0,0,0.05)' }]}>
                   <Text style={[styles.detailsBtnText, { color: isDarkMode ? Colors.darkText : '#475569' }]}>Szczegóły</Text>
                 </TouchableOpacity>
               </View>
@@ -121,7 +127,7 @@ const TravelPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
           </TouchableOpacity>
         ))}
 
-        <TouchableOpacity style={[styles.addCard, { borderColor: isDarkMode ? '#475569' : '#CBD5E1', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'transparent' }]}>
+        <TouchableOpacity style={[styles.addCard, { borderColor: isDarkMode ? '#475569' : 'rgba(148, 163, 184, 0.5)', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.3)' }]}>
             <View style={styles.addIconCircle}>
                 <Plus color={isDarkMode ? '#94A3B8' : '#64748B'} size={30} />
             </View>
