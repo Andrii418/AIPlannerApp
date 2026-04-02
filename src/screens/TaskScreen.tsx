@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,75 +10,123 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
-  StatusBar
+  StatusBar,
+  Alert,
 } from 'react-native';
 import { CheckCircle2, Circle, Plus, Trash2, LayoutGrid, Sun, Moon } from 'lucide-react-native';
 import { Colors } from '../theme';
+import auth from '@react-native-firebase/auth';
+
+import {
+  subscribeToTasks,
+  addTask,
+  toggleTask as toggleTaskInFirebase,
+  deleteTask as deleteTaskFromFirebase,
+} from '../services/taskService';
 
 interface Task {
   id: string;
   text: string;
   completed: boolean;
+  createdAt?: any;
 }
 
 const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
   const [task, setTask] = useState('');
-  const [taskList, setTaskList] = useState<Task[]>([
-    { id: '1', text: 'Nauczyć się React Native', completed: true },
-    { id: '2', text: 'Zintegrować Firebase', completed: false },
-  ]);
+  const [taskList, setTaskList] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // ZMIANA: bgColor na transparent, aby widzieć gradient z App.tsx
   const bgColor = 'transparent';
   const textColor = isDarkMode ? Colors.darkText : '#1E293B';
-  // ZMIANA: Karty i input z lekką przezroczystością
   const cardColor = isDarkMode ? Colors.darkCard : 'rgba(255, 255, 255, 0.8)';
   const borderColor = isDarkMode ? Colors.darkBorder : 'rgba(255, 255, 255, 0.5)';
   const subTextColor = isDarkMode ? '#94A3B8' : '#64748B';
 
-  const handleAddTask = () => {
-    if (task.trim().length === 0) return;
-    const newTask = {
-      id: Date.now().toString(),
-      text: task,
-      completed: false,
+  // 🔥 POBIERANIE TASKÓW Z FIREBASE
+  useEffect(() => {
+    const currentUser = auth().currentUser;
+    if (!currentUser) {
+      setTaskList([]);
+      setLoading(false);
+      return;
+    }
+
+    const unsubscribe = subscribeToTasks((tasksFromDb) => {
+      setTaskList(tasksFromDb as Task[]);
+      setLoading(false);
+    });
+
+    // Dodatkowo obserwuj zmiany stanu zalogowania
+    const authUnsubscribe = auth().onAuthStateChanged(user => {
+      if (!user) {
+        setTaskList([]);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      authUnsubscribe();
     };
-    setTaskList([newTask, ...taskList]);
-    setTask('');
-    Keyboard.dismiss();
+  }, []);
+
+  // ➕ DODAWANIE TASKA DO FIREBASE
+  const handleAddTask = async () => {
+    if (task.trim().length === 0) return;
+
+    try {
+      await addTask(task.trim());
+      setTask('');
+      Keyboard.dismiss();
+    } catch (error) {
+      console.error('Błąd dodawania zadania:', error);
+      Alert.alert('Błąd', 'Nie udało się dodać zadania.');
+    }
   };
 
-  const toggleTask = (id: string) => {
-    setTaskList(taskList.map(item =>
-      item.id === id ? { ...item, completed: !item.completed } : item
-    ));
+  // ✅ ZMIANA completed W FIREBASE
+  const handleToggleTask = async (item: Task) => {
+    try {
+      await toggleTaskInFirebase(item.id, item.completed);
+    } catch (error) {
+      console.error('Błąd zmiany statusu zadania:', error);
+      Alert.alert('Błąd', 'Nie udało się zaktualizować zadania.');
+    }
   };
 
-  const deleteTask = (id: string) => {
-    setTaskList(taskList.filter(item => item.id !== id));
+  // 🗑 USUWANIE Z FIREBASE
+  const handleDeleteTask = async (id: string) => {
+    try {
+      await deleteTaskFromFirebase(id);
+    } catch (error) {
+      console.error('Błąd usuwania zadania:', error);
+      Alert.alert('Błąd', 'Nie udało się usunąć zadania.');
+    }
   };
 
   const renderItem = ({ item }: { item: Task }) => (
     <View style={[styles.taskCard, { backgroundColor: cardColor, borderColor: borderColor }]}>
       <TouchableOpacity
         style={styles.taskTextContainer}
-        onPress={() => toggleTask(item.id)}
+        onPress={() => handleToggleTask(item)}
       >
         {item.completed ? (
           <CheckCircle2 size={24} color={Colors.primary} />
         ) : (
           <Circle size={24} color={isDarkMode ? '#475569' : '#CBD5E1'} />
         )}
-        <Text style={[
-          styles.taskText,
-          { color: textColor },
-          item.completed && styles.completedText
-        ]}>
+        <Text
+          style={[
+            styles.taskText,
+            { color: textColor },
+            item.completed && styles.completedText,
+          ]}
+        >
           {item.text}
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => deleteTask(item.id)}>
+      <TouchableOpacity onPress={() => handleDeleteTask(item.id)}>
         <Trash2 size={20} color="#FF6B6B" />
       </TouchableOpacity>
     </View>
@@ -86,7 +134,11 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+      <StatusBar
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        translucent
+        backgroundColor="transparent"
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -102,6 +154,7 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
               )}
             </TouchableOpacity>
           </View>
+
           <Text style={[styles.subtitle, { color: subTextColor }]}>
             {taskList.filter(t => !t.completed).length} pozostało do zrobienia
           </Text>
@@ -112,18 +165,41 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
           renderItem={renderItem}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContent}
-          style={{ backgroundColor: 'transparent' }} // Wymuszenie przezroczystości listy
+          style={{ backgroundColor: 'transparent' }}
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <LayoutGrid size={48} color={subTextColor} />
-              <Text style={[styles.emptyText, { color: subTextColor }]}>Brak zadań. Dodaj coś!</Text>
-            </View>
+            loading ? (
+              <View style={styles.emptyState}>
+                <Text style={[styles.emptyText, { color: subTextColor }]}>
+                  Ładowanie zadań...
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <LayoutGrid size={48} color={subTextColor} />
+                <Text style={[styles.emptyText, { color: subTextColor }]}>
+                  Brak zadań. Dodaj coś!
+                </Text>
+              </View>
+            )
           }
         />
 
-        <View style={[styles.inputContainer, { backgroundColor: cardColor, borderTopColor: borderColor }]}>
+        <View
+          style={[
+            styles.inputContainer,
+            { backgroundColor: cardColor, borderTopColor: borderColor },
+          ]}
+        >
           <TextInput
-            style={[styles.input, { color: textColor, backgroundColor: isDarkMode ? '#2A2A3C' : 'rgba(148, 163, 184, 0.1)' }]}
+            style={[
+              styles.input,
+              {
+                color: textColor,
+                backgroundColor: isDarkMode
+                  ? '#2A2A3C'
+                  : 'rgba(148, 163, 184, 0.1)',
+              },
+            ]}
             placeholder="Co masz do zrobienia?"
             placeholderTextColor="#94A3B8"
             value={task}
@@ -140,8 +216,16 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: 25, paddingTop: Platform.OS === 'android' ? 50 : 70, marginBottom: 10 },
-  headerTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  header: {
+    paddingHorizontal: 25,
+    paddingTop: Platform.OS === 'android' ? 50 : 70,
+    marginBottom: 10,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   themeToggle: { padding: 8, borderRadius: 12 },
   title: { fontSize: 28, fontWeight: '800' },
   subtitle: { fontSize: 15, marginTop: 5 },
