@@ -3,6 +3,8 @@ import { View, Pressable, StyleSheet, Dimensions, Animated, Text } from 'react-n
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Svg, { Path } from 'react-native-svg';
 import { LayoutDashboard, BookOpen, CheckCircle2, Plane, BarChart } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Sparkles } from 'lucide-react-native';
 
 
 import Dashboard from '../screens/Dashboard';
@@ -109,35 +111,51 @@ const TabIcon = ({ name, color, size }: any) => {
   return <Icon color={color} size={size} />;
 };
 
+
 export const TabNavigator = ({ isDarkMode, toggleDarkMode }: any) => {
+  const navigation = useNavigation<any>(); // Hook do obsługi kliknięcia
+
   return (
-    <Tab.Navigator
-      initialRouteName="Dashboard" // Dashboard активний при вході
-      tabBar={(props) => <CustomTabBar {...props} isDarkMode={isDarkMode} />}
-      screenOptions={{ headerShown: false }}
-    >
-      <Tab.Screen name="Zadania" options={{ tabBarLabel: 'Zadania' }}>
-        {() => <TaskScreen isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
-      </Tab.Screen>
+    <View style={{ flex: 1 }}>
+      <Tab.Navigator
+        initialRouteName="Dashboard"
+        tabBar={(props) => <CustomTabBar {...props} isDarkMode={isDarkMode} />}
+        screenOptions={{ headerShown: false }}
+      >
+        <Tab.Screen name="Zadania">
+          {() => <TaskScreen isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
+        </Tab.Screen>
 
-      <Tab.Screen name="Nauka" options={{ tabBarLabel: 'Nauka' }}>
-        {() => <StudyPlannerScreen isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
-      </Tab.Screen>
+        <Tab.Screen name="Nauka">
+          {() => <StudyPlannerScreen isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
+        </Tab.Screen>
 
-      <Tab.Screen name="Dashboard" options={{ tabBarLabel: 'Główna' }}>
-        {() => <Dashboard isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
-      </Tab.Screen>
+        <Tab.Screen name="Dashboard">
+          {() => <Dashboard isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
+        </Tab.Screen>
 
-      <Tab.Screen name="Podróże" options={{ tabBarLabel: 'Podróże' }}>
-        {() => <TravelPlannerScreen isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
-      </Tab.Screen>
+        <Tab.Screen name="Podróże">
+          {() => <TravelPlannerScreen isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
+        </Tab.Screen>
 
-      <Tab.Screen name="Statystyki" options={{ tabBarLabel: 'Analiza' }}>
-        {() => <StatsScreen isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
-      </Tab.Screen>
-    </Tab.Navigator>
+        <Tab.Screen name="Statystyki">
+          {() => <StatsScreen isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
+        </Tab.Screen>
+      </Tab.Navigator>
+
+
+
+      {/* STATYCZNY PRZYCISK AI PO PRAWEJ STRONIE */}
+      <Pressable
+        style={styles.floatingAIButton}
+        onPress={() => navigation.navigate('AIPlanner')}
+      >
+        <Sparkles color="#FFFFFF" size={28} />
+      </Pressable>
+    </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   tabBarContainer: {
@@ -188,5 +206,22 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     marginTop: 2,
-  }
+  },
+  floatingAIButton: {
+      position: 'absolute',
+      right: 25,
+      bottom: 180,
+      backgroundColor: '#5152D6',
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      justifyContent: 'center',
+      alignItems: 'center',
+      elevation: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 5,
+      zIndex: 9999,
+    },
 });

@@ -501,7 +501,11 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
               ) : (
                 <CheckCircle2 size={24} color="#64748B" />
               )}
-              <Text style={[styles.topicText, { color: textColor }]}>{topic.name}</Text>
+              <Text
+                style={[styles.topicText, { color: textColor, flex: 1 }]}
+              >
+                {topic.name}
+              </Text>
             </TouchableOpacity>
           ))
         )}

@@ -7,6 +7,7 @@ import auth from '@react-native-firebase/auth';
 import LinearGradient from 'react-native-linear-gradient';
 
 import { TabNavigator } from './src/navigation/TabNavigator';
+import AIPlannerScreen from './src/screens/AIPlannerScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import { Colors } from './src/theme';
@@ -80,6 +81,7 @@ const App = () => {
             }}
           >
             {user ? (
+                <>
               <Stack.Screen name="MainApp">
                 {(props) => (
                   <TabNavigator
@@ -89,6 +91,18 @@ const App = () => {
                   />
                 )}
               </Stack.Screen>
+              <Stack.Screen
+                      name="AIPlanner"
+                      component={AIPlannerScreen}
+                      options={{
+                        headerShown: false,
+                        title: 'Asystent AI',
+                        headerStyle: { backgroundColor: '#5152D6' }, // Kolor paska u góry
+                        headerTintColor: '#FFF' // Kolor tekstu i strzałki "wstecz"
+                      }}
+                    />
+                  </>
+
             ) : (
               <>
                 <Stack.Screen name="LoginScreen" component={LoginScreen} />

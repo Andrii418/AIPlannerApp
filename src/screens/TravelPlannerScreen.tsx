@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { TripAIPlan } from './components/TripAIPlan';
 import {
   View,
   Text,
@@ -260,6 +261,30 @@ const TravelPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
     }
   };
 
+const handleToggleCheckpoint = async (tripId: string, index: number) => {
+    const user = auth().currentUser;
+    if (!user || !selectedTrip) return;
+
+    try {
+      const updatedCheckpoints = [...(selectedTrip.checkpoints || [])];
+      updatedCheckpoints[index] = {
+        ...updatedCheckpoints[index],
+        completed: !updatedCheckpoints[index].completed
+      };
+
+      await firestore()
+        .collection('users')
+        .doc(user.uid)
+        .collection('trips')
+        .doc(tripId)
+        .update({ checkpoints: updatedCheckpoints });
+
+      setSelectedTrip({ ...selectedTrip, checkpoints: updatedCheckpoints });
+    } catch (error) {
+      console.error('Błąd aktualizacji planu AI:', error);
+    }
+  };
+
   // =========================
   // Packing list helpers w modalu
   // =========================
@@ -349,6 +374,16 @@ const TravelPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
                   : `Do wyjazdu pozostało ${daysLeft} ${daysLeft === 1 ? 'dzień' : 'dni'}`}
             </Text>
           </View>
+
+          {/* PLAN PODRÓŻY AI */}
+          <TripAIPlan
+            checkpoints={selectedTrip.checkpoints}
+            onToggle={(index) => handleToggleCheckpoint(selectedTrip.id, index)}
+            isDarkMode={isDarkMode}
+            textColor={textColor}
+            cardColor={cardColor}
+            borderColor={borderColor}
+          />
 
           {/* Notatki */}
           {selectedTrip.notes ? (
