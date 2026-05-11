@@ -25,6 +25,9 @@ import {
   CheckCircle2,
   Plus,
   X,
+  ChevronDown,
+  ChevronUp,
+
 } from 'lucide-react-native';
 import { Colors } from '../theme';
 
@@ -32,6 +35,7 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openSections, setOpenSections] = useState<{ [key: number]: boolean }>({ 0: true });
 
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -291,9 +295,9 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
         completed: !updatedTopics[index].completed,
       };
 
-      const topicsCompleted = updatedTopics.filter((t: any) => t.completed).length;
-      const totalTopics = updatedTopics.length;
-      const progress = totalTopics > 0 ? Math.round((topicsCompleted / totalTopics) * 100) : 0;
+     const topicsCompleted = updatedTopics.filter((t: any) => !t.isHeader && t.completed).length;
+     const totalTopics = updatedTopics.filter((t: any) => !t.isHeader).length;
+     const progress = totalTopics > 0 ? Math.round((topicsCompleted / totalTopics) * 100) : 0;
 
       await firestore()
         .collection('users')
@@ -329,6 +333,23 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
   const getStatusColor = (course: any) => {
     if ((course.progress || 0) === 100) return '#2ECC71';
     return '#7B61FF';
+  };
+
+  const buildSections = (topicsList: any[]) => {
+    const sections: { header: string; headerIndex: number; items: { item: any; originalIndex: number }[] }[] = [];
+    topicsList.forEach((item, i) => {
+      if (item.isHeader) {
+        sections.push({ header: item.name, headerIndex: i, items: [] });
+      } else {
+        if (sections.length === 0) sections.push({ header: '', headerIndex: -1, items: [] });
+        sections[sections.length - 1].items.push({ item, originalIndex: i });
+      }
+    });
+    return sections;
+  };
+
+  const toggleSection = (sectionIndex: number) => {
+    setOpenSections(prev => ({ ...prev, [sectionIndex]: !prev[sectionIndex] }));
   };
 
   const renderCourseList = () => (
@@ -478,36 +499,50 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
           Tematy ({topicsCompleted}/{totalTopics})
         </Text>
 
+
         {topicsList.length === 0 ? (
           <Text style={[styles.infoLabel, { marginTop: 10 }]}>Brak tematów w tym planie.</Text>
         ) : (
-          topicsList.map((topic: any, i: number) => (
-            <TouchableOpacity
-              key={i}
-              onPress={() => handleToggleTopic(i)}
-              style={[
-                styles.topicRow,
-                {
-                  backgroundColor: topic.completed
-                    ? 'rgba(209, 196, 233, 0.6)'
-                    : 'rgba(243, 229, 245, 0.6)',
-                  borderColor,
-                  borderWidth: 1,
-                },
-              ]}
-            >
-              {topic.completed ? (
-                <CheckCircle2 size={24} color="#4CAF50" />
-              ) : (
-                <CheckCircle2 size={24} color="#64748B" />
-              )}
-              <Text
-                style={[styles.topicText, { color: textColor, flex: 1 }]}
-              >
-                {topic.name}
-              </Text>
-            </TouchableOpacity>
-          ))
+          buildSections(topicsList).map((section, sectionIndex) => {
+            const isOpen = !!openSections[sectionIndex];
+            const completedCount = section.items.filter(({ item }) => item.completed).length;
+            const totalCount = section.items.length;
+
+            return (
+              <View key={sectionIndex} style={styles.accordionSection}>
+                {section.header ? (
+                  <TouchableOpacity
+                    style={[styles.accordionHeader, { borderColor: isDarkMode ? '#2D3748' : '#E2E8F0' }]}
+                    onPress={() => toggleSection(sectionIndex)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.accordionLeft}>
+                      <Text style={styles.accordionDayText}>{section.header}</Text>
+                      <Text style={styles.accordionCount}>{completedCount}/{totalCount}</Text>
+                    </View>
+                    {isOpen ? <ChevronUp size={18} color="#5152D6" /> : <ChevronDown size={18} color="#5152D6" />}
+                  </TouchableOpacity>
+                ) : null}
+
+                {isOpen && section.items.map(({ item, originalIndex }) => (
+                  <TouchableOpacity
+                    key={originalIndex}
+                    onPress={() => handleToggleTopic(originalIndex)}
+                    style={[styles.topicRow, {
+                      backgroundColor: item.completed ? 'rgba(209, 196, 233, 0.6)' : 'rgba(243, 229, 245, 0.6)',
+                      borderColor,
+                      borderWidth: 1,
+                    }]}
+                  >
+                    {item.completed
+                      ? <CheckCircle2 size={24} color="#4CAF50" />
+                      : <CheckCircle2 size={24} color="#64748B" />}
+                    <Text style={[styles.topicText, { color: textColor, flex: 1 }]}>{item.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            );
+          })
         )}
       </ScrollView>
     );
@@ -739,6 +774,48 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF6B6B',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  topicDayHeader: {
+    paddingVertical: 10,
+    paddingHorizontal: 5,
+    marginTop: 12,
+    marginBottom: 2,
+  },
+  topicDayHeaderText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    color: '#5152D6',
+    textTransform: 'uppercase',
+  },
+  accordionSection: { marginBottom: 4 },
+  accordionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(81, 82, 214, 0.07)',
+    marginBottom: 8,
+    borderWidth: 1,
+  },
+  accordionLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  accordionDayText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    color: '#5152D6',
+    textTransform: 'uppercase',
+  },
+  accordionCount: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94A3B8',
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
   },
 });
 
