@@ -1,11 +1,23 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Pressable, StyleSheet, Dimensions, Animated, Text } from 'react-native';
+import {
+  View,
+  Pressable,
+  StyleSheet,
+  Dimensions,
+  Animated,
+  Text,
+} from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Svg, { Path } from 'react-native-svg';
-import { LayoutDashboard, BookOpen, CheckCircle2, Plane, BarChart } from 'lucide-react-native';
+import {
+  LayoutDashboard,
+  BookOpen,
+  CheckCircle2,
+  Plane,
+  BarChart,
+  Sparkles,
+} from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Sparkles } from 'lucide-react-native';
-
 
 import Dashboard from '../screens/Dashboard';
 import TaskScreen from '../screens/TaskScreen';
@@ -23,8 +35,14 @@ const HOLE_RADIUS = 35;
 const Tab = createBottomTabNavigator();
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
-const CustomTabBar = ({ state, descriptors, navigation, isDarkMode }: any) => {
+const AI_MODE_MAP: any = {
+  Nauka: 'study',
+  Podróże: 'travel',
+};
+
+const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   const scrollX = useRef(new Animated.Value(0)).current;
+  const aiNavigation = useNavigation<any>();
 
   useEffect(() => {
     Animated.spring(scrollX, {
@@ -35,20 +53,23 @@ const CustomTabBar = ({ state, descriptors, navigation, isDarkMode }: any) => {
     }).start();
   }, [state.index]);
 
+  const routeName = state.routes[state.index].name;
+
   const createPath = (x: number) => {
     const center = x + TAB_WIDTH / 2;
     const smoothRadius = 15;
+
     return `
-       M 0,0
-       L ${center - HOLE_RADIUS - smoothRadius},0
-       Q ${center - HOLE_RADIUS},0 ${center - HOLE_RADIUS},${smoothRadius}
-       A ${HOLE_RADIUS},${HOLE_RADIUS} 0 0 0 ${center + HOLE_RADIUS},${smoothRadius}
-       Q ${center + HOLE_RADIUS},0 ${center + HOLE_RADIUS + smoothRadius},0
-       L ${TAB_BAR_WIDTH},0
-       L ${TAB_BAR_WIDTH},${BAR_HEIGHT}
-       L 0,${BAR_HEIGHT}
-       Z
-     `;
+      M 0,0
+      L ${center - HOLE_RADIUS - smoothRadius},0
+      Q ${center - HOLE_RADIUS},0 ${center - HOLE_RADIUS},${smoothRadius}
+      A ${HOLE_RADIUS},${HOLE_RADIUS} 0 0 0 ${center + HOLE_RADIUS},${smoothRadius}
+      Q ${center + HOLE_RADIUS},0 ${center + HOLE_RADIUS + smoothRadius},0
+      L ${TAB_BAR_WIDTH},0
+      L ${TAB_BAR_WIDTH},${BAR_HEIGHT}
+      L 0,${BAR_HEIGHT}
+      Z
+    `;
   };
 
   const d = scrollX.interpolate({
@@ -59,7 +80,6 @@ const CustomTabBar = ({ state, descriptors, navigation, isDarkMode }: any) => {
   return (
     <View style={styles.tabBarContainer}>
       <Svg width={TAB_BAR_WIDTH} height={BAR_HEIGHT}>
-
         <AnimatedPath d={d} fill="#5152D6" />
       </Svg>
 
@@ -67,11 +87,13 @@ const CustomTabBar = ({ state, descriptors, navigation, isDarkMode }: any) => {
         <View style={styles.contentContainer}>
           {state.routes.map((route: any, index: number) => {
             const isFocused = state.index === index;
-            const { options } = descriptors[route.key];
-            const label = options.tabBarLabel || route.name;
 
             const onPress = () => {
-              const event = navigation.emit({ type: 'tabPress', target: route.key });
+              const event = navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+              });
+
               if (!isFocused && !event.defaultPrevented) {
                 navigation.navigate(route.name);
               }
@@ -79,22 +101,40 @@ const CustomTabBar = ({ state, descriptors, navigation, isDarkMode }: any) => {
 
             return (
               <Pressable key={route.key} onPress={onPress} style={styles.tabItem}>
-                <View style={[
-                  styles.iconWrapper,
-                  isFocused && styles.activeIconWrapper
-                ]}>
+                <View style={[styles.iconWrapper, isFocused && styles.activeIconWrapper]}>
                   <TabIcon
                     name={route.name}
-                    color="#FFFFFF"
+                    color="#fff"
                     size={isFocused ? 28 : 24}
                   />
                 </View>
-                {!isFocused && <Text style={styles.label}>{label}</Text>}
+
+                {!isFocused && (
+                  <Text style={styles.label}>{route.name}</Text>
+                )}
               </Pressable>
             );
           })}
         </View>
       </View>
+
+      {/* 🔥 AI BUTTON */}
+      {['Dashboard', 'Nauka', 'Podróże'].includes(routeName) && (
+        <Pressable
+          style={styles.floatingAIButton}
+          onPress={() => {
+            const mode = AI_MODE_MAP[routeName];
+
+            if (mode) {
+              aiNavigation.navigate('AIPlanner', { mode });
+            } else {
+              aiNavigation.navigate('AIPlanner');
+            }
+          }}
+        >
+          <Sparkles color="#fff" size={28} />
+        </Pressable>
+      )}
     </View>
   );
 };
@@ -107,55 +147,40 @@ const TabIcon = ({ name, color, size }: any) => {
     Podróże: Plane,
     Statystyki: BarChart,
   };
+
   const Icon = icons[name] || LayoutDashboard;
   return <Icon color={color} size={size} />;
 };
 
-
 export const TabNavigator = ({ isDarkMode, toggleDarkMode }: any) => {
-  const navigation = useNavigation<any>(); // Hook do obsługi kliknięcia
-
   return (
-    <View style={{ flex: 1 }}>
-      <Tab.Navigator
-        initialRouteName="Dashboard"
-        tabBar={(props) => <CustomTabBar {...props} isDarkMode={isDarkMode} />}
-        screenOptions={{ headerShown: false }}
-      >
-        <Tab.Screen name="Zadania">
-          {() => <TaskScreen isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
-        </Tab.Screen>
+    <Tab.Navigator
+      initialRouteName="Dashboard"
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
+    >
+      <Tab.Screen name="Zadania">
+        {() => <TaskScreen isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
+      </Tab.Screen>
 
-        <Tab.Screen name="Nauka">
-          {() => <StudyPlannerScreen isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
-        </Tab.Screen>
+      <Tab.Screen name="Nauka">
+        {() => <StudyPlannerScreen isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
+      </Tab.Screen>
 
-        <Tab.Screen name="Dashboard">
-          {() => <Dashboard isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
-        </Tab.Screen>
+      <Tab.Screen name="Dashboard">
+        {() => <Dashboard isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
+      </Tab.Screen>
 
-        <Tab.Screen name="Podróże">
-          {() => <TravelPlannerScreen isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
-        </Tab.Screen>
+      <Tab.Screen name="Podróże">
+        {() => <TravelPlannerScreen isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
+      </Tab.Screen>
 
-        <Tab.Screen name="Statystyki">
-          {() => <StatsScreen isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
-        </Tab.Screen>
-      </Tab.Navigator>
-
-
-
-      {/* STATYCZNY PRZYCISK AI PO PRAWEJ STRONIE */}
-      <Pressable
-        style={styles.floatingAIButton}
-        onPress={() => navigation.navigate('AIPlanner')}
-      >
-        <Sparkles color="#FFFFFF" size={28} />
-      </Pressable>
-    </View>
+      <Tab.Screen name="Statystyki">
+        {() => <StatsScreen isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />}
+      </Tab.Screen>
+    </Tab.Navigator>
   );
 };
-
 
 const styles = StyleSheet.create({
   tabBarContainer: {
@@ -164,22 +189,19 @@ const styles = StyleSheet.create({
     left: MARGIN,
     right: MARGIN,
     height: BAR_HEIGHT,
-    backgroundColor: 'transparent',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 5,
   },
+
   contentContainer: {
     flexDirection: 'row',
     height: BAR_HEIGHT,
   },
+
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   iconWrapper: {
     width: 45,
     height: 45,
@@ -187,41 +209,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   activeIconWrapper: {
     backgroundColor: '#5152D6',
     top: -20,
     width: 52,
     height: 52,
     borderRadius: 26,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-    borderWidth: 3,
-    borderColor: 'transparent',
   },
+
   label: {
-    color: '#FFFFFF',
+    color: '#fff',
     fontSize: 10,
-    fontWeight: '700',
     marginTop: 2,
   },
+
   floatingAIButton: {
-      position: 'absolute',
-      right: 25,
-      bottom: 180,
-      backgroundColor: '#5152D6',
-      width: 60,
-      height: 60,
-      borderRadius: 30,
-      justifyContent: 'center',
-      alignItems: 'center',
-      elevation: 8,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 5,
-      zIndex: 9999,
-    },
+    position: 'absolute',
+    right: 25,
+    bottom: 180,
+    backgroundColor: '#5152D6',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+  },
 });

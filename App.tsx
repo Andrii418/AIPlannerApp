@@ -75,34 +75,29 @@ const App = () => {
           <Stack.Navigator
             screenOptions={{
               headerShown: false,
-              // KLUCZOWE: wymusza przezroczystość na każdym ekranie w apce
               cardStyle: { backgroundColor: 'transparent' },
               detachPreviousScreen: false,
+              // Dodaj to, aby przejścia między ekranami były płynne przy przezroczystym tle
+              cardStyleInterpolator: ({ current }) => ({
+                cardStyle: {
+                  opacity: current.progress,
+                },
+              }),
             }}
           >
             {user ? (
-                <>
-              <Stack.Screen name="MainApp">
-                {(props) => (
-                  <TabNavigator
-                    {...props}
-                    isDarkMode={isDarkMode}
-                    toggleDarkMode={toggleDarkMode}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen
-                      name="AIPlanner"
-                      component={AIPlannerScreen}
-                      options={{
-                        headerShown: false,
-                        title: 'Asystent AI',
-                        headerStyle: { backgroundColor: '#5152D6' }, // Kolor paska u góry
-                        headerTintColor: '#FFF' // Kolor tekstu i strzałki "wstecz"
-                      }}
+              <>
+                <Stack.Screen name="MainApp">
+                  {(props) => (
+                    <TabNavigator
+                      {...props}
+                      isDarkMode={isDarkMode}
+                      toggleDarkMode={toggleDarkMode}
                     />
-                  </>
-
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="AIPlanner" component={AIPlannerScreen} />
+              </>
             ) : (
               <>
                 <Stack.Screen name="LoginScreen" component={LoginScreen} />

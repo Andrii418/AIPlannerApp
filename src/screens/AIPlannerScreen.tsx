@@ -15,7 +15,7 @@ import {
   Modal,
   Dimensions
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { GROQ_API_KEY } from '@env';
 import {
   ChevronLeft,
@@ -29,7 +29,6 @@ import {
   Calendar
 } from 'lucide-react-native';
 
-// Nowy sposób importowania Firebase (Modular SDK v22+)
 import { getAuth } from '@react-native-firebase/auth';
 import {
   getFirestore,
@@ -37,12 +36,8 @@ import {
   addDoc,
   serverTimestamp
 } from '@react-native-firebase/firestore';
-console.log("AKTUALNY KLUCZ:", GROQ_API_KEY);
+
 const { width } = Dimensions.get('window');
-
-
-
-// Teraz bezpiecznie pobieramy klucz z pliku .env
 const API_KEY = GROQ_API_KEY;
 const API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
@@ -53,27 +48,31 @@ interface Message {
 
 const AIPlannerScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Inicjalizacja Firebase
   const auth = getAuth();
   const db = getFirestore();
   const user = auth.currentUser;
 
-  // Stany główne aplikacji
-  const [mode, setMode] = useState<'study' | 'travel'>('travel');
+  // Pobieramy tryb początkowy. Jeśli 'selection', pozwalamy na zmianę.
+  const initialMode = route.params?.mode ?? 'selection';
+  const isLocked = initialMode === 'study' || initialMode === 'travel';
+
+  const [mode, setMode] = useState<'study' | 'travel'>(
+    initialMode === 'selection' ? 'travel' : initialMode
+  );
+
   const [userInput, setUserInput] = useState('');
   const [chatHistory, setChatHistory] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Stany modalu zapisu
   const [showModal, setShowModal] = useState(false);
   const [tempPlanText, setTempPlanText] = useState('');
   const [formDestination, setFormDestination] = useState('');
   const [formBudget, setFormBudget] = useState('');
   const [formDate, setFormDate] = useState('');
 
-  // Automatyczne przewijanie czatu do dołu
   useEffect(() => {
     const timer = setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -89,9 +88,10 @@ const AIPlannerScreen: React.FC = () => {
     setUserInput('');
     setLoading(true);
 
-   const prompt = mode === 'study'
-    ? "Jesteś generatorem planów nauki. ODPOWIADAJ WYŁĄCZNIE W FORMACIE: 'DZIEŃ X' a pod nim lista zadań od myślników (-). Zakaz pisania wstępów, powitań i podsumowań. Ma to być surowa lista gotowa do parsowania."
-          : "Jesteś generatorem planów podróży. ODPOWIADAJ WYŁĄCZNIE W FORMACIE: 'DZIEŃ X' a pod nim lista atrakcji od myślników (-). Zakaz pisania wstępów i zbędnych zdań. Tylko surowy plan gotowy do parsowania.";
+    const prompt = mode === 'study'
+      ? "Jesteś generatorem planów nauki. ODPOWIADAJ WYŁĄCZNIE W FORMACIE: 'DZIEŃ X' a pod nim lista zadań od myślników (-). Zakaz pisania wstępów, powitań i podsumowań."
+      : "Jesteś generatorem planów podróży. ODPOWIADAJ WYŁĄCZNIE W FORMACIE: 'DZIEŃ X' a pod nim lista atrakcji od myślników (-). Zakaz pisania wstępów i zbędnych zdań.";
+
     try {
       const response = await fetch(API_URL, {
         method: "POST",
@@ -124,10 +124,7 @@ const AIPlannerScreen: React.FC = () => {
   };
 
   const handleFinalSave = async () => {
-    if (!user) {
-      Alert.alert("Błąd", "Musisz być zalogowany.");
-      return;
-    }
+    if (!user) return;
     if (!formDestination.trim()) {
       Alert.alert("Błąd", mode === 'travel' ? "Wpisz cel podróży!" : "Wpisz nazwę planu!");
       return;
@@ -136,32 +133,29 @@ const AIPlannerScreen: React.FC = () => {
     try {
       setLoading(true);
       const items: any[] = [];
-      let topicsCounter = 0; // Licznik tematów do zrobienia
+      let topicsCounter = 0;
 
-      // Parsowanie tekstu AI na listę zadań
       tempPlanText.split('\n').forEach(line => {
         const trimmed = line.trim();
         if (!trimmed || trimmed.length < 2) return;
-
         if (trimmed.toLowerCase().includes('dzień') || trimmed.toLowerCase().includes('tydzień')) {
           items.push({ name: `📍 ${trimmed.toUpperCase()}`, completed: false, isHeader: true });
         } else {
           const clean = trimmed.replace(/^[-*•\d.)]+\s*/, '').trim();
           items.push({ name: clean, completed: false });
-          topicsCounter++; // Zwiększamy licznik tylko dla tematów (nie nagłówków)
+          topicsCounter++;
         }
       });
 
       const collectionName = mode === 'study' ? 'studyPlans' : 'trips';
-
       const payload = {
         createdAt: serverTimestamp(),
         ...(mode === 'study' ? {
           name: formDestination,
           date: formDate || new Date().toLocaleDateString('pl-PL'),
           topicsList: items,
-          totalTopics: topicsCounter,    // Zapisuje całkowitą liczbę tematów (np. 20)
-          topicsCompleted: 0,          // Inicjalizuje ukończone jako 0
+          totalTopics: topicsCounter,
+          topicsCompleted: 0,
           progress: 0,
         } : {
           destination: formDestination,
@@ -175,13 +169,11 @@ const AIPlannerScreen: React.FC = () => {
 
       const userDocRef = collection(db, 'users', user.uid, collectionName);
       await addDoc(userDocRef, payload);
-
       setShowModal(false);
-      Alert.alert("Sukces!", "Plan został dodany do Twojego kalendarza.");
+      Alert.alert("Sukces!", "Plan został dodany.");
       navigation.goBack();
     } catch (e) {
-      console.error(e);
-      Alert.alert("Błąd", "Nie udało się zapisać w bazie danych.");
+      Alert.alert("Błąd", "Nie udało się zapisać.");
     } finally {
       setLoading(false);
     }
@@ -193,28 +185,44 @@ const AIPlannerScreen: React.FC = () => {
 
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <ChevronLeft color="#5152D6" size={28} />
         </TouchableOpacity>
-        <View style={styles.modeSwitcher}>
-          <TouchableOpacity
-            style={[styles.modeItem, mode === 'study' && styles.modeActive]}
-            onPress={() => { setMode('study'); setChatHistory([]); }}
-          >
-            <GraduationCap size={18} color={mode === 'study' ? "#FFF" : "#64748B"} />
-            <Text style={[styles.modeText, mode === 'study' && styles.modeTextActive]}>Nauka</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modeItem, mode === 'travel' && styles.modeActive]}
-            onPress={() => { setMode('travel'); setChatHistory([]); }}
-          >
-            <Plane size={18} color={mode === 'travel' ? "#FFF" : "#64748B"} />
-            <Text style={[styles.modeText, mode === 'travel' && styles.modeTextActive]}>Podróż</Text>
-          </TouchableOpacity>
-        </View>
+
+        {isLocked ? (
+          // Tryb zablokowany (wejście z Nauki lub Podróży)
+          <View style={styles.headerTitleContainer}>
+            {mode === 'travel' ? <Plane size={20} color="#5152D6" /> : <GraduationCap size={20} color="#5152D6" />}
+            <Text style={styles.headerTitle}>
+              {mode === 'travel' ? "Planer Podróży AI" : "Planer Nauki AI"}
+            </Text>
+          </View>
+        ) : (
+          // Tryb wyboru (wejście z Dashboardu)
+          <View style={styles.modeSwitcher}>
+            <TouchableOpacity
+              style={[styles.modeItem, mode === 'study' && styles.modeActive]}
+              onPress={() => { setMode('study'); setChatHistory([]); }}
+            >
+              <GraduationCap size={18} color={mode === 'study' ? "#FFF" : "#64748B"} />
+              <Text style={[styles.modeText, mode === 'study' && styles.modeTextActive]}>Nauka</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modeItem, mode === 'travel' && styles.modeActive]}
+              onPress={() => { setMode('travel'); setChatHistory([]); }}
+            >
+              <Plane size={18} color={mode === 'travel' ? "#FFF" : "#64748B"} />
+              <Text style={[styles.modeText, mode === 'travel' && styles.modeTextActive]}>Podróż</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        <View style={{ width: 28 }} />
       </View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+      >
         <ScrollView
           ref={scrollViewRef}
           style={styles.chatArea}
@@ -223,11 +231,11 @@ const AIPlannerScreen: React.FC = () => {
           {chatHistory.length === 0 && (
             <View style={styles.welcome}>
               <Sparkles color="#5152D6" size={45} />
-              <Text style={styles.welcomeTitle}>Twój Asystent AI</Text>
+              <Text style={styles.welcomeTitle}>Asystent {mode === 'travel' ? 'Podróży' : 'Nauki'}</Text>
               <Text style={styles.welcomeSubtitle}>
                 {mode === 'travel'
-                  ? "Powiedz mi gdzie chcesz jechać, a ja stworzę plan Twojej wymarzonej podróży."
-                  : "Napisz czego musisz się nauczyć, a ja przygotuję dla Ciebie harmonogram."}
+                  ? "Stworzę  dla Ciebie plan wycieczki."
+                  : "Przygotuję dla Ciebie harmonogram."}
               </Text>
             </View>
           )}
@@ -265,7 +273,7 @@ const AIPlannerScreen: React.FC = () => {
         </View>
       </KeyboardAvoidingView>
 
-      {/* MODAL FORMULARZA ZAPISU */}
+
       <Modal visible={showModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -273,9 +281,8 @@ const AIPlannerScreen: React.FC = () => {
               <Sparkles color="#5152D6" size={30} />
             </View>
             <Text style={styles.modalTitle}>Ostatni krok</Text>
-            <Text style={styles.modalSub}>Uzupełnij brakujące dane dla Twojego planu</Text>
+            <Text style={styles.modalSub}>Uzupełnij dane dla Twojego planu</Text>
 
-            {/* Pole Nazwa / Miejsce */}
             <View style={styles.modalInputWrapper}>
               <MapPin size={20} color="#94A3B8" style={{ marginRight: 10 }} />
               <TextInput
@@ -287,11 +294,10 @@ const AIPlannerScreen: React.FC = () => {
               />
             </View>
 
-            {/* Pole Data (Dynamiczne: Wylot lub Egzamin) */}
             <View style={styles.modalInputWrapper}>
               <Calendar size={20} color="#94A3B8" style={{ marginRight: 10 }} />
               <TextInput
-                placeholder={mode === 'travel' ? "Data wylotu (np. 15.06.2024)" : "Data egzaminu (np. 20.05.2024)"}
+                placeholder={mode === 'travel' ? "Data (np. 15.06.2024)" : "Data (np. 20.05.2024)"}
                 placeholderTextColor="#94A3B8"
                 value={formDate}
                 onChangeText={setFormDate}
@@ -299,12 +305,11 @@ const AIPlannerScreen: React.FC = () => {
               />
             </View>
 
-            {/* Opcjonalny Budżet - tylko dla Podróży */}
             {mode === 'travel' && (
               <View style={styles.modalInputWrapper}>
                 <DollarSign size={20} color="#94A3B8" style={{ marginRight: 10 }} />
                 <TextInput
-                  placeholder="Planowany budżet (opcjonalnie)"
+                  placeholder="Budżet (opcjonalnie)"
                   placeholderTextColor="#94A3B8"
                   keyboardType="numeric"
                   value={formBudget}
@@ -315,16 +320,10 @@ const AIPlannerScreen: React.FC = () => {
             )}
 
             <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: '#F1F5F9' }]}
-                onPress={() => setShowModal(false)}
-              >
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setShowModal(false)}>
                 <Text style={{ color: '#64748B', fontWeight: '700' }}>Anuluj</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: '#5152D6' }]}
-                onPress={handleFinalSave}
-              >
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: '#5152D6' }]} onPress={handleFinalSave}>
                 <Text style={{ color: 'white', fontWeight: '700' }}>Zapisz plan</Text>
               </TouchableOpacity>
             </View>
@@ -335,14 +334,27 @@ const AIPlannerScreen: React.FC = () => {
   );
 };
 
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderColor: '#EEE', paddingTop: Platform.OS === 'android' ? 45 : 10 },
-  modeSwitcher: { flexDirection: 'row', backgroundColor: '#F3F4F6', borderRadius: 20, flex: 1, marginLeft: 15, padding: 3 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderColor: '#EEE',
+    paddingBottom: 10,
+    paddingTop: Platform.OS === 'android' ? 45 : 10
+  },
+  headerTitleContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, justifyContent: 'center' },
+  headerTitle: { fontSize: 17, fontWeight: 'bold', color: '#1E293B' },
+  modeSwitcher: { flexDirection: 'row', backgroundColor: '#F3F4F6', borderRadius: 20, flex: 1, marginHorizontal: 15, padding: 3 },
   modeItem: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 8, borderRadius: 18, gap: 5 },
   modeActive: { backgroundColor: '#5152D6' },
   modeText: { fontSize: 12, fontWeight: 'bold', color: '#64748B' },
   modeTextActive: { color: '#FFF' },
+  backBtn: { padding: 5 },
   chatArea: { flex: 1, backgroundColor: '#F9FAFB' },
   welcome: { alignItems: 'center', marginTop: 50, paddingHorizontal: 40 },
   welcomeTitle: { fontSize: 20, fontWeight: 'bold', marginTop: 15 },
@@ -354,11 +366,10 @@ const styles = StyleSheet.create({
   aText: { color: '#333', fontSize: 15, lineHeight: 22 },
   inlineSaveBtn: { flexDirection: 'row', backgroundColor: '#10B981', alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 12, alignItems: 'center', marginLeft: 5, marginBottom: 15 },
   inlineSaveText: { color: '#FFF', fontWeight: 'bold', fontSize: 12, marginLeft: 6 },
-  inputArea: { padding: 10, backgroundColor: '#FFF', borderTopWidth: 1, borderColor: '#EEE' },
+  inputArea: { padding: 10, backgroundColor: '#FFF', borderTopWidth: 1, borderColor: '#EEE', marginBottom: 20  },
   inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', borderRadius: 25, paddingHorizontal: 15 },
   textInput: { flex: 1, paddingVertical: 12, fontSize: 15, color: '#000' },
   sendBtn: { backgroundColor: '#5152D6', padding: 10, borderRadius: 20, marginLeft: 5 },
-
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { width: width * 0.88, backgroundColor: 'white', borderRadius: 28, padding: 25, alignItems: 'center' },
   iconCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(81, 82, 214, 0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
