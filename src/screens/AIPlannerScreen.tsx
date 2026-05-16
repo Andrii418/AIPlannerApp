@@ -139,7 +139,7 @@ const AIPlannerScreen: React.FC = () => {
         const trimmed = line.trim();
         if (!trimmed || trimmed.length < 2) return;
         if (trimmed.toLowerCase().includes('dzień') || trimmed.toLowerCase().includes('tydzień')) {
-          items.push({ name: `📍 ${trimmed.toUpperCase()}`, completed: false, isHeader: true });
+          items.push({ name: trimmed.toUpperCase(), completed: false, isHeader: true });
         } else {
           const clean = trimmed.replace(/^[-*•\d.)]+\s*/, '').trim();
           items.push({ name: clean, completed: false });
@@ -190,7 +190,7 @@ const AIPlannerScreen: React.FC = () => {
         </TouchableOpacity>
 
         {isLocked ? (
-          // Tryb zablokowany (wejście z Nauki lub Podróży)
+
           <View style={styles.headerTitleContainer}>
             {mode === 'travel' ? <Plane size={20} color="#5152D6" /> : <GraduationCap size={20} color="#5152D6" />}
             <Text style={styles.headerTitle}>
@@ -198,7 +198,7 @@ const AIPlannerScreen: React.FC = () => {
             </Text>
           </View>
         ) : (
-          // Tryb wyboru (wejście z Dashboardu)
+
           <View style={styles.modeSwitcher}>
             <TouchableOpacity
               style={[styles.modeItem, mode === 'study' && styles.modeActive]}
