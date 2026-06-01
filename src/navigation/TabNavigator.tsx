@@ -6,6 +6,7 @@ import {
   Dimensions,
   Animated,
   Text,
+  Platform,
 } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Svg, { Path } from 'react-native-svg';
@@ -29,7 +30,9 @@ const { width } = Dimensions.get('window');
 const MARGIN = 0;
 const TAB_BAR_WIDTH = width - MARGIN * 2;
 const TAB_WIDTH = TAB_BAR_WIDTH / 5;
-const BAR_HEIGHT = 70;
+
+// Zwiększamy wysokość paska na urządzeniach z notchem (głównie iOS), żeby ładnie wypełniał dół ekranu
+const BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 72;
 const HOLE_RADIUS = 35;
 
 const Tab = createBottomTabNavigator();
@@ -118,7 +121,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
         </View>
       </View>
 
-      {/* 🔥 AI BUTTON */}
+      {/* 🔥 AI BUTTON - Skorygowana pozycja pionowa od dołu ekranu */}
       {['Dashboard', 'Nauka', 'Podróże'].includes(routeName) && (
         <Pressable
           style={styles.floatingAIButton}
@@ -132,7 +135,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
             }
           }}
         >
-          <Sparkles color="#fff" size={28} />
+          <Sparkles color="#fff" size={26} />
         </Pressable>
       )}
     </View>
@@ -185,15 +188,16 @@ export const TabNavigator = ({ isDarkMode, toggleDarkMode }: any) => {
 const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 0, // PRZYPIĘTE DO SAMEGO DOŁU
     left: MARGIN,
     right: MARGIN,
     height: BAR_HEIGHT,
+    backgroundColor: 'transparent',
   },
 
   contentContainer: {
     flexDirection: 'row',
-    height: BAR_HEIGHT,
+    height: 70, // Stała wysokość dla interakcji z ikonami (reszta to bezpieczny margines dolny iOS)
   },
 
   tabItem: {
@@ -212,28 +216,39 @@ const styles = StyleSheet.create({
 
   activeIconWrapper: {
     backgroundColor: '#5152D6',
-    top: -20,
+    top: -18,
     width: 52,
     height: 52,
     borderRadius: 26,
+    // Dodajemy delikatny cień, by odciąć przycisk od tła bento-gridu
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 5,
   },
 
   label: {
     color: '#fff',
     fontSize: 10,
     marginTop: 2,
+    fontWeight: '500',
   },
 
   floatingAIButton: {
     position: 'absolute',
-    right: 25,
-    bottom: 180,
+    right: 20,
+    bottom: Platform.OS === 'ios' ? 140 : 110, // Dostosowane, by nie wisiało zbyt wysoko nad nowym navbaru
     backgroundColor: '#5152D6',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
+    shadowColor: '#5152D6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
 });

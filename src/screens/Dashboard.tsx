@@ -5,18 +5,18 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Dimensions,
   StatusBar,
   Platform,
   Modal,
   TouchableWithoutFeedback,
+  SafeAreaView, // Dodany import SafeAreaView
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import { Colors } from '../theme';
 import {
-  Book,
+  BookOpen,
   Plus,
   Plane,
   ChevronRight,
@@ -27,27 +27,19 @@ import {
   X,
   LogOut,
   Settings as SettingsIcon,
-  Smile,
-  CheckCircle2,
+  Sparkles,
   Clock,
   Calendar,
-  TrendingUp,
+  User,
+  ArrowUpRight,
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
-const getFormattedDate = () => {
+const getFormattedDate = (): string => {
   const date = new Date();
   return date.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' });
-};
-
-const getGreeting = () => {
-  const h = new Date().getHours();
-  if (h < 6) return 'Dobranoc 🌙';
-  if (h < 12) return 'Dzień dobry! ☀️';
-  if (h < 18) return 'Dobry wieczór! 🌤️';
-  return 'Dobry wieczór! 🌆';
 };
 
 const parseDate = (dateStr: string): Date | null => {
@@ -74,32 +66,38 @@ const calcDaysLeft = (dateStr: string): number => {
   return Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 };
 
-const Dashboard = ({ isDarkMode, toggleDarkMode }: any) => {
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+interface DashboardProps {
+  isDarkMode: boolean;
+  toggleDarkMode: () => void;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ isDarkMode, toggleDarkMode }) => {
+  const [showNotifications, setShowNotifications] = useState<boolean>(false);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
   const today = getFormattedDate();
   const navigation = useNavigation<any>();
 
-  const textColor = isDarkMode ? Colors.darkText : '#1E293B';
-  const cardColor = isDarkMode ? Colors.darkCard : Colors.white;
-  const borderColor = isDarkMode ? Colors.darkBorder : '#E2E8F0';
-  const subTextColor = isDarkMode ? '#94A3B8' : '#64748B';
+  const theme = {
+    bg: isDarkMode ? '#0B0F19' : '#F8FAFC',
+    card: isDarkMode ? '#1E293B' : '#FFFFFF',
+    text: isDarkMode ? '#F8FAFC' : '#0F172A',
+    textMuted: isDarkMode ? '#64748B' : '#94A3B8',
+    border: isDarkMode ? '#334155' : '#E2E8F0',
+    accent: '#6366F1',
+    accentLight: isDarkMode ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF',
+    success: '#10B981',
+    successLight: isDarkMode ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5',
+    warning: '#F59E0B',
+    danger: '#EF4444',
+  };
 
-  // =========================
-  // STAN DANYCH
-  // =========================
-  const [tasksDone, setTasksDone] = useState(0);
-  const [tasksTotal, setTasksTotal] = useState(0);
+  const [tasksDone, setTasksDone] = useState<number>(0);
+  const [tasksTotal, setTasksTotal] = useState<number>(0);
   const [todayTasks, setTodayTasks] = useState<any[]>([]);
-
   const [studyPlans, setStudyPlans] = useState<any[]>([]);
-
-  const [tripsUpcoming, setTripsUpcoming] = useState(0);
+  const [tripsUpcoming, setTripsUpcoming] = useState<number>(0);
   const [nextTrip, setNextTrip] = useState<any>(null);
 
-  // =========================
-  // POBIERANIE Z FIRESTORE
-  // =========================
   useEffect(() => {
     let unsubs: (() => void)[] = [];
 
@@ -109,7 +107,6 @@ const Dashboard = ({ isDarkMode, toggleDarkMode }: any) => {
 
       if (!user) return;
 
-      // ---- TASKS ----
       const unsubTasks = firestore()
         .collection('users')
         .doc(user.uid)
@@ -119,51 +116,23 @@ const Dashboard = ({ isDarkMode, toggleDarkMode }: any) => {
           setTasksTotal(docs.length);
           setTasksDone(docs.filter((t: any) => t.completed).length);
 
-          // Zadania niezakończone — pokaż pierwsze 3
           const pending = docs
             .filter((t: any) => !t.completed)
             .slice(0, 3);
           setTodayTasks(pending);
         }, err => console.error('tasks error', err));
 
-      // ---- STUDY PLANS ----
       const unsubStudy = firestore()
         .collection('users')
         .doc(user.uid)
         .collection('studyPlans')
         .onSnapshot(snap => {
           const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          // Sortuj: niedokończone pierwsze
           const sorted = docs.sort((a: any, b: any) => (a.progress || 0) - (b.progress || 0));
           setStudyPlans(sorted);
         }, err => console.error('studyPlans error', err));
 
-      // ---- TRIPS ----
-      const unsubTrips = firestore()
-        .collection('users')
-        .doc(user.uid)
-        .collection('trips')
-        .onSnapshot(snap => {
-          const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          const now = new Date();
-          now.setHours(0, 0, 0, 0);
-
-          const upcoming = docs.filter((t: any) => {
-            const d = parseDate(t.startDate || t.date || '');
-            return d && d >= now;
-          });
-
-          setTripsUpcoming(upcoming.length);
-
-          const sorted = upcoming.sort((a: any, b: any) => {
-            const da = parseDate(a.startDate || a.date || '');
-            const db = parseDate(b.startDate || b.date || '');
-            return (da?.getTime() || 0) - (db?.getTime() || 0);
-          });
-          setNextTrip(sorted[0] || null);
-        }, err => console.error('trips error', err));
-
-      unsubs = [unsubTasks, unsubStudy, unsubTrips];
+      unsubs = [unsubTasks, unsubStudy];
     });
 
     return () => {
@@ -181,301 +150,290 @@ const Dashboard = ({ isDarkMode, toggleDarkMode }: any) => {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    if (priority === 'Wysoki' || priority === 'high') return '#FF6B6B';
-    if (priority === 'Średni' || priority === 'medium') return '#FFD700';
-    return '#2ECC71';
+  const getPriorityColor = (priority: string): string => {
+    const p = priority?.toLowerCase() || '';
+    if (p === 'wysoki' || p === 'high') return theme.danger;
+    if (p === 'średni' || p === 'medium') return theme.warning;
+    return theme.success;
   };
 
-  const tasksPercent = tasksTotal > 0 ? Math.round((tasksDone / tasksTotal) * 100) : 0;
   const avgStudyProgress = studyPlans.length > 0
     ? Math.round(studyPlans.reduce((acc, p) => acc + (p.progress || 0), 0) / studyPlans.length)
     : 0;
 
-  // Najbliższy plan nauki (najmniej ukończony i ma datę)
   const nextExam = studyPlans.find(p => p.progress < 100) || studyPlans[0] || null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'transparent' }}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} transparent={true} />
 
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      {/* ZMIANA: Bezpieczny nagłówek dla iOS i Android za pomocą SafeAreaView i absolutnego pozycjonowania */}
+      <SafeAreaView style={[styles.fixedHeaderContainer, { backgroundColor: theme.bg, borderBottomColor: theme.border }]}>
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setShowSettings(true)}
+            style={[styles.avatarBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+          >
+            <User size={20} color={theme.text} />
+          </TouchableOpacity>
 
-          {/* HEADER */}
-          <View style={styles.newHeader}>
+          <View style={styles.topCenter}>
+            <Text style={[styles.topDate, { color: theme.text }]} numberOfLines={1}>{today}</Text>
+          </View>
+
+          <View style={styles.actionGroup}>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() => setShowSettings(true)}
-              style={styles.headerTextSection}
+              style={[styles.iconButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+              onPress={() => setShowNotifications(true)}
             >
-              <Text style={[styles.mainDateText, { color: textColor }]}>{today}</Text>
-              <Text style={styles.subDateText}>Twój plan na dziś</Text>
+              <Bell size={20} color={theme.text} />
+              {(tasksTotal - tasksDone > 0 || tripsUpcoming > 0) && (
+                <View style={[styles.badgeDot, { backgroundColor: theme.accent }]} />
+              )}
             </TouchableOpacity>
 
-            <View style={styles.headerIcons}>
-              <TouchableOpacity
-                style={[styles.headerBtn, { backgroundColor: cardColor, borderColor }]}
-                onPress={() => setShowNotifications(true)}
-              >
-                <Bell size={20} color={textColor} />
-                {(tasksTotal - tasksDone > 0 || tripsUpcoming > 0) && (
-                  <View style={styles.dotBadge} />
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={toggleDarkMode}
-                style={[styles.headerBtn, { backgroundColor: cardColor, borderColor }]}
-              >
-                {isDarkMode ? <Sun size={20} color="#FFD700" /> : <Moon size={20} color="#64748B" />}
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* BANNER POWITANIA */}
-          <View style={[styles.moodBanner, { backgroundColor: '#7B61FF' }]}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.moodTitle}>{getGreeting()}</Text>
-              <Text style={styles.moodSub}>
-                {tasksTotal - tasksDone > 0
-                  ? `Masz ${tasksTotal - tasksDone} zadań do zrobienia`
-                  : 'Wszystkie zadania ukończone! 🎉'}
-              </Text>
-            </View>
-            <View style={styles.glassIconLarge}>
-              <Smile color="white" size={32} />
-            </View>
-          </View>
-
-          {/* BENTO GRID */}
-          <View style={styles.bentoGrid}>
             <TouchableOpacity
-              style={[styles.bigCard, { backgroundColor: '#7B61FF' }]}
-              activeOpacity={0.9}
-              onPress={() => navigation.navigate('Nauka')}
+              activeOpacity={0.7}
+              onPress={toggleDarkMode}
+              style={[styles.iconButton, { backgroundColor: theme.card, borderColor: theme.border }]}
             >
-              <View style={styles.glassIconContainer}>
-                <Book color="white" size={26} />
-              </View>
-              <View>
-                <Text style={styles.bigCardTitle}>Planuj Naukę</Text>
-                <Text style={styles.bigCardSub}>
-                  {studyPlans.length > 0
-                    ? `${studyPlans.length} aktywnych planów`
-                    : 'Brak planów nauki'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            <View style={styles.rightColumn}>
-              <TouchableOpacity
-                style={[styles.smallCard, { backgroundColor: '#8B5CF6' }]}
-                activeOpacity={0.9}
-                onPress={() => navigation.navigate('Zadania')}
-              >
-                <View style={styles.glassIconSmall}>
-                  <Plus color="white" size={20} />
-                </View>
-                <Text style={styles.smallCardText}>Zadanie</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.smallCard, { backgroundColor: '#6366F1' }]}
-                activeOpacity={0.9}
-                onPress={() => navigation.navigate('Podróże')}
-              >
-                <View style={styles.glassIconSmall}>
-                  <Plane color="white" size={20} />
-                </View>
-                <Text style={styles.smallCardText}>Podróż</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* STATYSTYKI — LIVE */}
-          <View style={styles.statsRow}>
-            <View style={[styles.statCard, { backgroundColor: cardColor, borderColor }]}>
-              <Text style={[styles.statNumber, { color: '#FF4D8D' }]}>
-                {tasksDone}/{tasksTotal}
-              </Text>
-              <Text style={styles.statLabel}>Zadania</Text>
-            </View>
-            <View style={[styles.statCard, { backgroundColor: cardColor, borderColor }]}>
-              <Text style={[styles.statNumber, { color: '#7B61FF' }]}>
-                {studyPlans.length}
-              </Text>
-              <Text style={styles.statLabel}>Plany nauki</Text>
-            </View>
-            <View style={[styles.statCard, { backgroundColor: cardColor, borderColor }]}>
-              <Text style={[styles.statNumber, { color: '#2ECC71' }]}>
-                {tripsUpcoming}
-              </Text>
-              <Text style={styles.statLabel}>Podróże</Text>
-            </View>
-          </View>
-
-          {/* SEKCJA — ZADANIA */}
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>Zadania do zrobienia</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Zadania')}>
-              <Text style={styles.linkText}>Wszystkie</Text>
+              {isDarkMode ? <Sun size={20} color={theme.warning} /> : <Moon size={20} color={theme.text} />}
             </TouchableOpacity>
           </View>
-
-          {todayTasks.length === 0 ? (
-            <View style={[styles.emptyTasksCard, { backgroundColor: cardColor, borderColor }]}>
-              <View style={styles.emptyIconCircle}>
-                <LayoutGrid size={24} color="#CBD5E1" />
-              </View>
-              <Text style={styles.emptyText}>
-                {tasksTotal === 0
-                  ? 'Brak zadań. Dodaj pierwsze!'
-                  : 'Wszystkie zadania ukończone! 🎉'}
-              </Text>
-            </View>
-          ) : (
-            todayTasks.map((task: any) => (
-              <TouchableOpacity
-                key={task.id}
-                activeOpacity={0.85}
-                style={[styles.taskRow, { backgroundColor: cardColor, borderColor }]}
-                onPress={() => navigation.navigate('Zadania')}
-              >
-                <View style={[styles.taskPriorityDot, { backgroundColor: getPriorityColor(task.priority || '') }]} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.taskName, { color: textColor }]} numberOfLines={1}>
-                    {task.title || task.name || 'Zadanie'}
-                  </Text>
-                  {task.dueDate ? (
-                    <Text style={[styles.taskSub, { color: subTextColor }]}>
-                      Termin: {task.dueDate}
-                    </Text>
-                  ) : null}
-                </View>
-                <ChevronRight size={16} color={subTextColor} />
-              </TouchableOpacity>
-            ))
-          )}
-
-          {/* SEKCJA — PLAN NAUKI */}
-          <View style={[styles.sectionHeader, { marginTop: 10 }]}>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>Twój plan nauki</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Nauka')}>
-              <Text style={styles.linkText}>Szczegóły</Text>
-            </TouchableOpacity>
-          </View>
-
-          {studyPlans.length === 0 ? (
-            <View style={[styles.emptyTasksCard, { backgroundColor: cardColor, borderColor }]}>
-              <View style={styles.emptyIconCircle}>
-                <Book size={24} color="#CBD5E1" />
-              </View>
-              <Text style={styles.emptyText}>Brak planów nauki. Dodaj pierwszy!</Text>
-            </View>
-          ) : (
-            studyPlans.slice(0, 3).map((plan: any) => (
-              <TouchableOpacity
-                key={plan.id}
-                activeOpacity={0.9}
-                style={[styles.card, { backgroundColor: cardColor, borderColor, marginBottom: 12 }]}
-                onPress={() => navigation.navigate('Nauka')}
-              >
-                <View style={styles.cardInfo}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.courseName, { color: textColor }]}>{plan.name}</Text>
-                    <Text style={styles.courseSub}>
-                      Egzamin: {plan.date} · {plan.topicsCompleted || 0}/{plan.totalTopics || 0} tematów
-                    </Text>
-                  </View>
-                  <View style={[styles.arrowCircle, { backgroundColor: isDarkMode ? '#2A2A40' : '#F1F5F9' }]}>
-                    <ChevronRight color={Colors.primary} size={18} />
-                  </View>
-                </View>
-
-                <View style={styles.progressSection}>
-                  <View style={[styles.progressBarBg, { backgroundColor: isDarkMode ? '#1E1E2E' : '#F1F5F9' }]}>
-                    <View style={[styles.progressBarFill, {
-                      width: `${plan.progress || 0}%`,
-                      backgroundColor: (plan.progress || 0) >= 100 ? '#2ECC71' : Colors.primary,
-                    }]} />
-                  </View>
-                  <View style={styles.progressLabels}>
-                    <Text style={styles.progressPercentText}>Postęp kursu</Text>
-                    <Text style={[styles.progressPercentNumber, { color: Colors.primary }]}>
-                      {plan.progress || 0}%
-                    </Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))
-          )}
-
-          {/* SEKCJA — NAJBLIŻSZA PODRÓŻ */}
-          {nextTrip && (
-            <>
-              <View style={[styles.sectionHeader, { marginTop: 10 }]}>
-                <Text style={[styles.sectionTitle, { color: textColor }]}>Najbliższa podróż</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Podróże')}>
-                  <Text style={styles.linkText}>Wszystkie</Text>
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity
-                activeOpacity={0.9}
-                style={[styles.tripCard, { backgroundColor: cardColor, borderColor }]}
-                onPress={() => navigation.navigate('Podróże')}
-              >
-                <View style={[styles.tripIconBox, { backgroundColor: 'rgba(46,204,113,0.12)' }]}>
-                  <Plane size={24} color="#2ECC71" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.tripDest, { color: textColor }]}>{nextTrip.destination}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 }}>
-                    <Calendar size={12} color={subTextColor} />
-                    <Text style={[styles.tripDate, { color: subTextColor }]}>
-                      {nextTrip.startDate || nextTrip.date}
-                      {nextTrip.endDate ? ` → ${nextTrip.endDate}` : ''}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.tripDaysBox}>
-                  <Text style={styles.tripDaysNum}>
-                    {calcDaysLeft(nextTrip.startDate || nextTrip.date || '')}
-                  </Text>
-                  <Text style={styles.tripDaysLabel}>dni</Text>
-                </View>
-              </TouchableOpacity>
-            </>
-          )}
-
-          <View style={{ height: 110 }} />
-        </ScrollView>
+        </View>
       </SafeAreaView>
 
-      {/* MODAL USTAWIEŃ */}
-      <Modal
-        visible={showSettings}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowSettings(false)}
+      {/* PRZEWIJANA LISTA ELEMENTÓW */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContainer}
       >
-        <TouchableWithoutFeedback onPress={() => setShowSettings(false)}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={[styles.modalContent, { backgroundColor: cardColor }]}>
-                <View style={styles.modalHeader}>
-                  <View style={styles.modalTitleRow}>
-                    <SettingsIcon size={20} color={textColor} />
-                    <Text style={[styles.modalTitle, { color: textColor }]}>Ustawienia</Text>
+        <View style={styles.heroSection}>
+          <Text style={[styles.heroGreeting, { color: theme.text }]}>Cześć! 👋</Text>
+          <Text style={[styles.heroSub, { color: theme.textMuted }]}>
+            {tasksTotal - tasksDone > 0
+              ? `Masz dzisiaj ${tasksTotal - tasksDone} nieukończone sprawy.`
+              : 'Wszystkie zadania zrobione! Czysta karta na dziś ✨'}
+          </Text>
+        </View>
+
+        <View style={styles.bentoGrid}>
+          <TouchableOpacity
+            style={[styles.bentoMain, { backgroundColor: theme.accent }]}
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate('Nauka')}
+          >
+            <View style={styles.bentoMainTop}>
+              <View style={styles.bentoBadge}>
+                <Sparkles color="#FFFFFF" size={12} />
+                <Text style={styles.bentoBadgeText}>EDUKACJA</Text>
+              </View>
+              <View style={styles.bentoActionIcon}>
+                <ArrowUpRight color="#FFFFFF" size={22} />
+              </View>
+            </View>
+            <View>
+              <Text style={styles.bentoMainTitle}>Planuj{'\n'}Naukę</Text>
+              <Text style={styles.bentoMainSub}>
+                {studyPlans.length > 0 ? `${studyPlans.length} aktywne kursy` : 'Brak planów'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.bentoColumn}>
+            <TouchableOpacity
+              style={[styles.bentoSecondary, { backgroundColor: theme.card, borderColor: theme.border }]}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('Zadania')}
+            >
+              <View style={[styles.iconWrapper, { backgroundColor: theme.accentLight }]}>
+                <Plus color={theme.accent} size={20} />
+              </View>
+              <Text style={[styles.bentoSecondaryTitle, { color: theme.text }]}>Zadanie</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.bentoSecondary, { backgroundColor: theme.card, borderColor: theme.border }]}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('Podróże')}
+            >
+              <View style={[styles.iconWrapper, { backgroundColor: theme.successLight }]}>
+                <Plane color={theme.success} size={20} />
+              </View>
+              <Text style={[styles.bentoSecondaryTitle, { color: theme.text }]}>Podróż</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={[styles.metricsRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={styles.metricItem}>
+            <Text style={[styles.metricValue, { color: theme.text }]}>{tasksDone}/{tasksTotal}</Text>
+            <Text style={[styles.metricLabel, { color: theme.textMuted }]}>Zadania</Text>
+          </View>
+          <View style={[styles.metricDivider, { backgroundColor: theme.border }]} />
+          <View style={styles.metricItem}>
+            <Text style={[styles.metricValue, { color: theme.text }]}>{studyPlans.length}</Text>
+            <Text style={[styles.metricLabel, { color: theme.textMuted }]}>Kursy</Text>
+          </View>
+          <View style={[styles.metricDivider, { backgroundColor: theme.border }]} />
+          <View style={styles.metricItem}>
+            <Text style={[styles.metricValue, { color: theme.text }]}>{tripsUpcoming}</Text>
+            <Text style={[styles.metricLabel, { color: theme.textMuted }]}>Wyprawy</Text>
+          </View>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Zadania na dziś</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Zadania')} hitSlop={12}>
+            <Text style={[styles.sectionLink, { color: theme.accent }]}>Zobacz wszystkie</Text>
+          </TouchableOpacity>
+        </View>
+
+        {todayTasks.length === 0 ? (
+          <View style={[styles.emptyState, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <LayoutGrid size={24} color={theme.textMuted} style={{ marginBottom: 8 }} />
+            <Text style={[styles.emptyStateText, { color: theme.textMuted }]}>
+              {tasksTotal === 0 ? 'Brak zadań na dziś. Dodaj coś nowego!' : 'Wszystko zrobione! Czas na relaks. 🎉'}
+            </Text>
+          </View>
+        ) : (
+          todayTasks.map((task: any) => (
+            <TouchableOpacity
+              key={task.id}
+              activeOpacity={0.7}
+              style={[styles.taskCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+              onPress={() => navigation.navigate('Zadania')}
+            >
+              <View style={[styles.taskIndicator, { backgroundColor: getPriorityColor(task.priority || '') }]} />
+              <View style={styles.taskMeta}>
+                <Text style={[styles.taskTitle, { color: theme.text }]} numberOfLines={1}>
+                  {task.title || task.name || 'Zadanie'}
+                </Text>
+                {task.dueDate && (
+                  <View style={styles.taskTimeRow}>
+                    <Clock size={12} color={theme.textMuted} />
+                    <Text style={[styles.taskDate, { color: theme.textMuted }]}>{task.dueDate}</Text>
                   </View>
-                  <TouchableOpacity onPress={() => setShowSettings(false)}>
-                    <X size={24} color={textColor} />
+                )}
+              </View>
+              <ChevronRight size={18} color={theme.textMuted} />
+            </TouchableOpacity>
+          ))
+        )}
+
+        <View style={[styles.sectionHeader, { marginTop: 28 }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Postępy w nauce</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Nauka')} hitSlop={12}>
+            <Text style={[styles.sectionLink, { color: theme.accent }]}>Szczegóły</Text>
+          </TouchableOpacity>
+        </View>
+
+        {studyPlans.length === 0 ? (
+          <View style={[styles.emptyState, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <BookOpen size={24} color={theme.textMuted} style={{ marginBottom: 8 }} />
+            <Text style={[styles.emptyStateText, { color: theme.textMuted }]}>Brak aktywnych planów nauki.</Text>
+          </View>
+        ) : (
+          studyPlans.slice(0, 2).map((plan: any) => {
+            const progress = plan.progress || 0;
+            return (
+              <TouchableOpacity
+                key={plan.id}
+                activeOpacity={0.7}
+                style={[styles.studyCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+                onPress={() => navigation.navigate('Nauka')}
+              >
+                <View style={styles.studyTop}>
+                  <View style={{ flex: 1, paddingRight: 8 }}>
+                    <Text style={[styles.studyName, { color: theme.text }]} numberOfLines={1}>
+                      {plan.name}
+                    </Text>
+                    <Text style={[styles.studyDetails, { color: theme.textMuted }]}>
+                      Egzamin: {plan.date || 'brak daty'} • {plan.topicsCompleted || 0}/{plan.totalTopics || 0} tematów
+                    </Text>
+                  </View>
+                  <Text style={[styles.studyPercent, { color: theme.accent }]}>{progress}%</Text>
+                </View>
+
+                <View style={[styles.trackBg, { backgroundColor: isDarkMode ? '#334155' : '#F1F5F9' }]}>
+                  <View
+                    style={[
+                      styles.trackFill,
+                      { width: `${progress}%`, backgroundColor: progress >= 100 ? theme.success : theme.accent }
+                    ]}
+                  />
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
+
+        {nextTrip && (
+          <>
+            <View style={[styles.sectionHeader, { marginTop: 28 }]}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Najbliższa podróż</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Podróże')} hitSlop={12}>
+                <Text style={[styles.sectionLink, { color: theme.accent }]}>Wszystkie</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={[styles.tripCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+              onPress={() => navigation.navigate('Podróże')}
+            >
+              <View style={[styles.tripIconContainer, { backgroundColor: theme.successLight }]}>
+                <Plane size={22} color={theme.success} />
+              </View>
+              <View style={styles.tripInfo}>
+                <Text style={[styles.tripDestination, { color: theme.text }]} numberOfLines={1}>
+                  {nextTrip.destination}
+                </Text>
+                <View style={styles.tripDateRow}>
+                  <Calendar size={12} color={theme.textMuted} />
+                  <Text style={[styles.tripDateText, { color: theme.textMuted }]}>
+                    {nextTrip.startDate || nextTrip.date}
+                    {nextTrip.endDate ? ` — ${nextTrip.endDate}` : ''}
+                  </Text>
+                </View>
+              </View>
+              <View style={[styles.countdownBadge, { backgroundColor: isDarkMode ? '#334155' : '#F8FAFC' }]}>
+                <Text style={[styles.countdownValue, { color: theme.text }]}>
+                  {calcDaysLeft(nextTrip.startDate || nextTrip.date || '')}
+                </Text>
+                <Text style={[styles.countdownLabel, { color: theme.textMuted }]}>dni</Text>
+              </View>
+            </TouchableOpacity>
+          </>
+        )}
+
+        <View style={{ height: 130 }} />
+      </ScrollView>
+
+      {/* MODAL SETTINGS */}
+      <Modal visible={showSettings} transparent animationType="fade" onRequestClose={() => setShowSettings(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowSettings(false)}>
+          <View style={styles.modalBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={[styles.modalSheet, { backgroundColor: theme.card }]}>
+                <View style={styles.modalHeader}>
+                  <View style={styles.modalTitleContainer}>
+                    <SettingsIcon size={18} color={theme.text} />
+                    <Text style={[styles.modalTitle, { color: theme.text }]}>Ustawienia</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setShowSettings(false)} hitSlop={8}>
+                    <X size={20} color={theme.textMuted} />
                   </TouchableOpacity>
                 </View>
-                <View style={styles.modalBody}>
-                  <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
-                    <LogOut size={20} color="#FF6B6B" />
-                    <Text style={styles.logoutText}>Wyloguj się</Text>
+                <View style={styles.modalContent}>
+                  <TouchableOpacity
+                    style={[styles.modalActionItem, { backgroundColor: isDarkMode ? '#292524' : '#FEF2F2' }]}
+                    onPress={handleLogout}
+                  >
+                    <LogOut size={18} color={theme.danger} />
+                    <Text style={[styles.modalActionText, { color: theme.danger }]}>Wyloguj się z konta</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -484,53 +442,48 @@ const Dashboard = ({ isDarkMode, toggleDarkMode }: any) => {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* MODAL POWIADOMIEŃ */}
-      <Modal
-        visible={showNotifications}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowNotifications(false)}
-      >
+      {/* MODAL NOTIFICATIONS */}
+      <Modal visible={showNotifications} transparent animationType="fade" onRequestClose={() => setShowNotifications(false)}>
         <TouchableWithoutFeedback onPress={() => setShowNotifications(false)}>
-          <View style={styles.modalOverlay}>
+          <View style={styles.modalBackdrop}>
             <TouchableWithoutFeedback>
-              <View style={[styles.modalContent, { backgroundColor: cardColor }]}>
+              <View style={[styles.modalSheet, { backgroundColor: theme.card }]}>
                 <View style={styles.modalHeader}>
-                  <View style={styles.modalTitleRow}>
-                    <Bell size={20} color={textColor} />
-                    <Text style={[styles.modalTitle, { color: textColor }]}>Powiadomienia</Text>
+                  <View style={styles.modalTitleContainer}>
+                    <Bell size={18} color={theme.text} />
+                    <Text style={[styles.modalTitle, { color: theme.text }]}>Powiadomienia</Text>
                   </View>
-                  <TouchableOpacity onPress={() => setShowNotifications(false)}>
-                    <X size={24} color={textColor} />
+                  <TouchableOpacity onPress={() => setShowNotifications(false)} hitSlop={8}>
+                    <X size={20} color={theme.textMuted} />
                   </TouchableOpacity>
                 </View>
-                <View style={styles.modalBody}>
+                <View style={styles.modalContent}>
                   {tasksTotal - tasksDone > 0 && (
-                    <View style={styles.notifItem}>
-                      <View style={[styles.notifDot, { backgroundColor: '#FF6B6B' }]} />
-                      <Text style={[styles.notifText, { color: textColor }]}>
-                        Masz {tasksTotal - tasksDone} nieukończonych zadań
+                    <View style={[styles.notifRow, { borderBottomColor: theme.border }]}>
+                      <View style={[styles.notifStatus, { backgroundColor: theme.warning }]} />
+                      <Text style={[styles.notifBody, { color: theme.text }]}>
+                        Masz <Text style={{ fontWeight: '700' }}>{tasksTotal - tasksDone}</Text> nieukończone zadania.
                       </Text>
                     </View>
                   )}
                   {nextTrip && (
-                    <View style={styles.notifItem}>
-                      <View style={[styles.notifDot, { backgroundColor: '#2ECC71' }]} />
-                      <Text style={[styles.notifText, { color: textColor }]}>
-                        Podróż do {nextTrip.destination} za {calcDaysLeft(nextTrip.startDate || nextTrip.date || '')} dni
+                    <View style={[styles.notifRow, { borderBottomColor: theme.border }]}>
+                      <View style={[styles.notifStatus, { backgroundColor: theme.success }]} />
+                      <Text style={[styles.notifBody, { color: theme.text }]}>
+                        Podróż do {nextTrip.destination} już za {calcDaysLeft(nextTrip.startDate || nextTrip.date || '')} dni!
                       </Text>
                     </View>
                   )}
                   {nextExam && avgStudyProgress < 100 && (
-                    <View style={styles.notifItem}>
-                      <View style={[styles.notifDot, { backgroundColor: '#7B61FF' }]} />
-                      <Text style={[styles.notifText, { color: textColor }]}>
-                        Plan "{nextExam.name}" — postęp {nextExam.progress || 0}%
+                    <View style={[styles.notifRow, { borderBottomColor: theme.border }]}>
+                      <View style={[styles.notifStatus, { backgroundColor: theme.accent }]} />
+                      <Text style={[styles.notifBody, { color: theme.text }]}>
+                        Plan "{nextExam.name}" jest ukończony w {nextExam.progress || 0}%.
                       </Text>
                     </View>
                   )}
                   {tasksTotal - tasksDone === 0 && !nextTrip && avgStudyProgress >= 100 && (
-                    <Text style={[styles.notifText, { color: subTextColor, textAlign: 'center', paddingVertical: 20 }]}>
+                    <Text style={[styles.notifEmpty, { color: theme.textMuted }]}>
                       Brak nowych powiadomień 🎉
                     </Text>
                   )}
@@ -545,92 +498,405 @@ const Dashboard = ({ isDarkMode, toggleDarkMode }: any) => {
 };
 
 const styles = StyleSheet.create({
-  scrollContent: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 },
-
-  // Header
-  newHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 30, marginTop: 10 },
-  headerTextSection: { flex: 1 },
-  mainDateText: { fontSize: 26, fontWeight: '900', letterSpacing: -0.5 },
-  subDateText: { fontSize: 13, color: '#94A3B8', marginTop: 4, fontWeight: '600' },
-  headerIcons: { flexDirection: 'row', gap: 10, paddingBottom: 2 },
-  headerBtn: { width: 46, height: 46, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
-  dotBadge: { position: 'absolute', top: 11, right: 11, width: 8, height: 8, borderRadius: 4, backgroundColor: '#8B5CF6', borderWidth: 1.5, borderColor: '#FFF' },
-
-  // Banner
-  moodBanner: { borderRadius: 28, padding: 24, flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
-  moodTitle: { color: 'white', fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
-  moodSub: { color: 'rgba(255,255,255,0.85)', fontSize: 14, marginTop: 4, fontWeight: '600' },
-  glassIconLarge: { width: 60, height: 60, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-
-  // Bento
-  bentoGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25, height: 190 },
-  bigCard: { width: '58%', borderRadius: 32, padding: 22, justifyContent: 'space-between' },
-  glassIconContainer: { width: 48, height: 48, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  bigCardTitle: { color: 'white', fontSize: 20, fontWeight: '900', letterSpacing: -0.3 },
-  bigCardSub: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600' },
-  rightColumn: { width: '38%', justifyContent: 'space-between' },
-  smallCard: { height: '47%', borderRadius: 26, padding: 15, justifyContent: 'center', alignItems: 'center' },
-  glassIconSmall: { width: 36, height: 36, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  smallCardText: { color: 'white', fontWeight: '800', fontSize: 13, marginTop: 8 },
-
-  // Stats
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
-  statCard: { width: (width - 60) / 3, borderRadius: 22, paddingVertical: 20, alignItems: 'center', borderWidth: 1 },
-  statNumber: { fontSize: 22, fontWeight: '900', letterSpacing: -1 },
-  statLabel: { fontSize: 10, fontWeight: '800', marginTop: 4, color: '#64748B' },
-
-  // Section
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  sectionTitle: { fontSize: 19, fontWeight: '900', letterSpacing: -0.5 },
-  linkText: { color: '#7B61FF', fontSize: 14, fontWeight: '800' },
-
-  // Empty
-  emptyTasksCard: { borderRadius: 28, padding: 35, alignItems: 'center', borderWidth: 1.5, borderStyle: 'dashed', marginBottom: 12 },
-  emptyIconCircle: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  emptyText: { fontSize: 14, fontWeight: '700', color: '#64748B', textAlign: 'center' },
-
-  // Task row
-  taskRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 20, padding: 16, borderWidth: 1, marginBottom: 10, gap: 12 },
-  taskPriorityDot: { width: 10, height: 10, borderRadius: 5 },
-  taskName: { fontSize: 15, fontWeight: '700' },
-  taskSub: { fontSize: 12, fontWeight: '500', marginTop: 2 },
-
-  // Study card
-  card: { borderRadius: 28, padding: 22, borderWidth: 1 },
-  cardInfo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  courseName: { fontSize: 17, fontWeight: '800' },
-  courseSub: { fontSize: 13, color: '#64748B', marginTop: 3 },
-  arrowCircle: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  progressSection: { marginTop: 5 },
-  progressBarBg: { height: 10, borderRadius: 5, overflow: 'hidden' },
-  progressBarFill: { height: 10, borderRadius: 5 },
-  progressLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  progressPercentText: { fontSize: 12, color: '#64748B', fontWeight: '600' },
-  progressPercentNumber: { fontSize: 12, fontWeight: '800' },
-
-  // Trip card
-  tripCard: { borderRadius: 24, padding: 18, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 12 },
-  tripIconBox: { width: 52, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  tripDest: { fontSize: 17, fontWeight: '800' },
-  tripDate: { fontSize: 13, fontWeight: '600' },
-  tripDaysBox: { alignItems: 'center', backgroundColor: 'rgba(46,204,113,0.12)', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10 },
-  tripDaysNum: { fontSize: 22, fontWeight: '900', color: '#2ECC71' },
-  tripDaysLabel: { fontSize: 11, fontWeight: '700', color: '#2ECC71' },
-
-  // Modals
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { width: '85%', borderRadius: 32, padding: 25 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  modalTitle: { fontSize: 20, fontWeight: '900' },
-  modalBody: {},
-  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 },
-  logoutText: { fontSize: 16, fontWeight: '800', color: '#FF6B6B' },
-
-  // Notifications
-  notifItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
-  notifDot: { width: 10, height: 10, borderRadius: 5, marginTop: 4 },
-  notifText: { fontSize: 14, fontWeight: '600', flex: 1, lineHeight: 20 },
+  container: {
+    flex: 1
+  },
+  // POPRAWKA: Usunięte sztywne marginesy, dodane pozycjonowanie absolutne typu 'fixed'
+  fixedHeaderContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    borderBottomWidth: 1,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    height: 60,
+  },
+  // POPRAWKA: scrollContainer zaczyna się teraz zaraz pod paskiem (60px paska + zapas na safe area)
+  scrollContainer: {
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'ios' ? 140 : 125,
+    paddingBottom: 40,
+  },
+  heroSection: {
+    marginTop: 0,
+    marginBottom: 20,
+  },
+  avatarBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  topCenter: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 12,
+  },
+  topDate: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+    textTransform: 'uppercase',
+  },
+  actionGroup: {
+    flexDirection: 'row',
+    gap: 10
+  },
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    position: 'relative',
+  },
+  badgeDot: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  heroGreeting: {
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: -0.8
+  },
+  heroSub: {
+    fontSize: 15,
+    marginTop: 6,
+    fontWeight: '400',
+    lineHeight: 22
+  },
+  bentoGrid: {
+    flexDirection: 'row',
+    gap: 14,
+    height: 180,
+    marginBottom: 24
+  },
+  bentoMain: {
+    flex: 1.25,
+    borderRadius: 28,
+    padding: 22,
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+  },
+  bentoMainTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  bentoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  bentoBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8
+  },
+  bentoMainTitle: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    lineHeight: 28,
+    marginBottom: 4,
+  },
+  bentoMainSub: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 13,
+    fontWeight: '500'
+  },
+  bentoActionIcon: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bentoColumn: {
+    flex: 1,
+    gap: 14
+  },
+  bentoSecondary: {
+    flex: 1,
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderWidth: 1,
+  },
+  iconWrapper: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  bentoSecondaryTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: -0.2
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    borderRadius: 24,
+    paddingVertical: 20,
+    borderWidth: 1,
+    marginBottom: 32,
+  },
+  metricItem: {
+    flex: 1,
+    alignItems: 'center'
+  },
+  metricValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.5
+  },
+  metricLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4
+  },
+  metricDivider: {
+    width: 1,
+    height: '60%',
+    alignSelf: 'center'
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 19,
+    fontWeight: '800',
+    letterSpacing: -0.4
+  },
+  sectionLink: {
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  emptyState: {
+    borderRadius: 24,
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  taskCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  taskIndicator: {
+    width: 5,
+    height: 28,
+    borderRadius: 2.5,
+    marginRight: 14
+  },
+  taskMeta: {
+    flex: 1,
+    paddingRight: 8
+  },
+  taskTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: -0.1
+  },
+  taskTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 4
+  },
+  taskDate: {
+    fontSize: 12,
+    fontWeight: '500'
+  },
+  studyCard: {
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    marginBottom: 12
+  },
+  studyTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16
+  },
+  studyName: {
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.2
+  },
+  studyDetails: {
+    fontSize: 13,
+    marginTop: 4,
+    fontWeight: '400'
+  },
+  studyPercent: {
+    fontSize: 16,
+    fontWeight: '800'
+  },
+  trackBg: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden'
+  },
+  trackFill: {
+    height: '100%',
+    borderRadius: 4
+  },
+  tripCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 24,
+    padding: 18,
+    borderWidth: 1,
+  },
+  tripIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  tripInfo: {
+    flex: 1,
+    marginLeft: 14,
+    paddingRight: 8
+  },
+  tripDestination: {
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.2
+  },
+  tripDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 4
+  },
+  tripDateText: {
+    fontSize: 13,
+    fontWeight: '400'
+  },
+  countdownBadge: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    width: 52,
+    height: 52
+  },
+  countdownValue: {
+    fontSize: 18,
+    fontWeight: '800'
+  },
+  countdownLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: -2
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingTop: 24,
+    paddingHorizontal: 24,
+    paddingBottom: Platform.OS === 'ios' ? 44 : 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800'
+  },
+  modalContent: {
+    marginTop: 4
+  },
+  modalActionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+    borderRadius: 16,
+  },
+  modalActionText: {
+    fontSize: 15,
+    fontWeight: '700'
+  },
+  notifRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  notifStatus: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 12
+  },
+  notifBody: {
+    fontSize: 14,
+    fontWeight: '400',
+    flex: 1,
+    lineHeight: 20
+  },
+  notifEmpty: {
+    fontSize: 14,
+    textAlign: 'center',
+    paddingVertical: 32,
+    fontWeight: '500'
+  },
 });
 
 export default Dashboard;
