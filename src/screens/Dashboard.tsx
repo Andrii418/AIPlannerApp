@@ -211,7 +211,7 @@ const Dashboard: React.FC<DashboardProps> = ({ isDarkMode, toggleDarkMode }) => 
         contentContainerStyle={styles.scrollContainer}
       >
         <View style={styles.heroSection}>
-          <Text style={[styles.heroGreeting, { color: theme.text }]}>Cześć! 👋</Text>
+          <Text style={[styles.heroGreeting, { color: theme.text }]}>Cześć! </Text>
           <Text style={[styles.heroSub, { color: theme.textMuted }]}>
             {tasksTotal - tasksDone > 0
               ? `Masz dzisiaj ${tasksTotal - tasksDone} nieukończone sprawy.`
