@@ -7,7 +7,6 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Bell, Moon, Sun, User } from 'lucide-react-native';
 
 interface TopBarProps {
@@ -41,23 +40,14 @@ const TopBar: React.FC<TopBarProps> = ({
     card: isDarkMode ? '#1E293B' : '#FFFFFF',
     text: isDarkMode ? '#F8FAFC' : '#0F172A',
     border: isDarkMode ? '#334155' : '#E2E8F0',
-    accent: '#6366F1',
     warning: '#F59E0B',
   };
 
+  const displayTitle = title || getFormattedDate();
+
   return (
-    // Dokładnie tak samo jak w Dashboard.tsx — SafeAreaView z position absolute
-    <SafeAreaView
-      style={[
-        styles.fixedHeaderContainer,
-        {
-          backgroundColor: theme.bg,
-          borderBottomColor: theme.border,
-        },
-      ]}
-    >
+    <View style={[styles.fixedHeaderContainer, { backgroundColor: theme.bg, borderBottomColor: theme.border }]}>
       <View style={styles.topBar}>
-        {/* Avatar / Settings */}
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={onAvatarPress}
@@ -66,23 +56,21 @@ const TopBar: React.FC<TopBarProps> = ({
           <User size={20} color={theme.text} />
         </TouchableOpacity>
 
-        {/* Środek — data lub tytuł */}
         <View style={styles.topCenter}>
           <Text style={[styles.topDate, { color: theme.text }]} numberOfLines={1}>
-            {title ?? getFormattedDate()}
+            {displayTitle}
           </Text>
         </View>
 
-        {/* Prawa strona */}
         <View style={styles.actionGroup}>
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={onNotificationPress}
             style={[styles.iconButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onPress={onNotificationPress}
           >
             <Bell size={20} color={theme.text} />
             {hasNotification && (
-              <View style={[styles.badgeDot, { backgroundColor: theme.accent }]} />
+              <View style={styles.badgeDot} />
             )}
           </TouchableOpacity>
 
@@ -91,24 +79,18 @@ const TopBar: React.FC<TopBarProps> = ({
             onPress={toggleDarkMode}
             style={[styles.iconButton, { backgroundColor: theme.card, borderColor: theme.border }]}
           >
-            {isDarkMode
-              ? <Sun size={20} color={theme.warning} />
-              : <Moon size={20} color={theme.text} />}
+            {isDarkMode ? <Sun size={20} color={theme.warning} /> : <Moon size={20} color={theme.text} />}
           </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
-// Taka sama wysokość jak w Dashboard
-export const TOP_BAR_HEIGHT =
-  Platform.OS === 'android'
-    ? 60 + (StatusBar.currentHeight ?? 0)
-    : 104; // 44 safe area + 60 topBar
+// Stała eksportowana do kontenerów scrolla - dopasowana do nowej struktury bez SafeAreaView
+export const TOP_BAR_HEIGHT = Platform.OS === 'ios' ? 104 : 60 + (StatusBar.currentHeight ?? 0);
 
 const styles = StyleSheet.create({
-  // Identyczny jak fixedHeaderContainer w Dashboard.tsx
   fixedHeaderContainer: {
     position: 'absolute',
     top: 0,
@@ -116,7 +98,8 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 100,
     borderBottomWidth: 1,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    // Dynamiczny padding dopasowany dokładnie tak jak w Dashboard.tsx
+    paddingTop: Platform.OS === 'ios' ? 44 : StatusBar.currentHeight ?? 0,
   },
   topBar: {
     flexDirection: 'row',
@@ -164,6 +147,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
+    backgroundColor: '#6366F1',
   },
 });
 

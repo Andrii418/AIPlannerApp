@@ -741,7 +741,7 @@ const styles = StyleSheet.create({
   floatingLabel: { position: 'absolute', left: 16, top: 10, fontSize: 15, zIndex: 1 },
   floatingInput: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 16, paddingTop: 22, paddingBottom: 12, fontSize: 15 },
 
-  input: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 14 : 12, marginBottom: 14, fontSize: 15 },
+  input: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 90 : 75, marginBottom: 14, fontSize: 15 },
   topicInputRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
   addTopicBtn: { borderRadius: 16, overflow: 'hidden', marginBottom: 16 },
   addTopicBtnGradient: { height: 46, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
