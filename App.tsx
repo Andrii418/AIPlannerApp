@@ -14,7 +14,6 @@ import { Colors } from './src/theme';
 
 const Stack = createStackNavigator();
 
-// 1. CAŁKOWITE WYŁĄCZENIE TŁA NAWIGACJI
 const MyTheme = {
   ...DefaultTheme,
   colors: {
@@ -28,7 +27,7 @@ const App = () => {
   const [initializing, setInitializing] = useState(true);
   const [user, setUser] = useState<any>(null);
 
-  const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
+  const toggleDarkMode = () => setIsDarkMode(prev => !prev);
 
   useEffect(() => {
     const subscriber = auth().onAuthStateChanged((userState) => {
@@ -46,22 +45,29 @@ const App = () => {
     );
   }
 
+  // Tworzymy komponenty z zamkniętymi props – unikamy re-renderów i problemów z undefined
+  const MainAppScreen = () => (
+    <TabNavigator
+      isDarkMode={isDarkMode}
+      toggleDarkMode={toggleDarkMode}
+    />
+  );
+
   return (
     <SafeAreaProvider>
       <View style={styles.full}>
         <StatusBar
-          barStyle={isDarkMode ? "light-content" : "dark-content"}
+          barStyle={isDarkMode ? 'light-content' : 'dark-content'}
           backgroundColor="transparent"
           translucent
         />
 
-        {/* 2. TWOJE JEDYNE, GLOBALNE TŁO */}
+        {/* Globalne tło */}
         <View style={StyleSheet.absoluteFill}>
           {isDarkMode ? (
             <View style={[styles.full, { backgroundColor: Colors.darkBackground }]} />
           ) : (
             <LinearGradient
-              // Używamy mocniejszych kolorów, żeby nie było "blade"
               colors={['#BFD3FF', '#FFFFFF']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -70,14 +76,13 @@ const App = () => {
           )}
         </View>
 
-        {/* 3. NAWIGACJA BEZ WŁASNEGO TŁA */}
+        {/* Nawigacja bez własnego tła */}
         <NavigationContainer theme={MyTheme}>
           <Stack.Navigator
             screenOptions={{
               headerShown: false,
               cardStyle: { backgroundColor: 'transparent' },
               detachPreviousScreen: false,
-              // Dodaj to, aby przejścia między ekranami były płynne przy przezroczystym tle
               cardStyleInterpolator: ({ current }) => ({
                 cardStyle: {
                   opacity: current.progress,
@@ -87,15 +92,11 @@ const App = () => {
           >
             {user ? (
               <>
-                <Stack.Screen name="MainApp">
-                  {(props) => (
-                    <TabNavigator
-                      {...props}
-                      isDarkMode={isDarkMode}
-                      toggleDarkMode={toggleDarkMode}
-                    />
-                  )}
-                </Stack.Screen>
+                {/* KLUCZOWA ZMIANA: komponent jako zmienna, nie inline render prop */}
+                <Stack.Screen
+                  name="MainApp"
+                  component={MainAppScreen}
+                />
                 <Stack.Screen name="AIPlanner" component={AIPlannerScreen} />
               </>
             ) : (
@@ -113,7 +114,7 @@ const App = () => {
 
 const styles = StyleSheet.create({
   full: { flex: 1 },
-  center: { justifyContent: 'center', alignItems: 'center' }
+  center: { justifyContent: 'center', alignItems: 'center' },
 });
 
 export default App;

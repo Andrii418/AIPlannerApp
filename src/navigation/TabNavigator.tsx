@@ -31,7 +31,6 @@ const MARGIN = 0;
 const TAB_BAR_WIDTH = width - MARGIN * 2;
 const TAB_WIDTH = TAB_BAR_WIDTH / 5;
 
-// Zwiększamy wysokość paska na urządzeniach z notchem (głównie iOS), żeby ładnie wypełniał dół ekranu
 const BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 72;
 const HOLE_RADIUS = 35;
 
@@ -121,13 +120,11 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
         </View>
       </View>
 
-      {/* 🔥 AI BUTTON - Skorygowana pozycja pionowa od dołu ekranu */}
       {['Dashboard', 'Nauka', 'Podróże'].includes(routeName) && (
         <Pressable
           style={styles.floatingAIButton}
           onPress={() => {
             const mode = AI_MODE_MAP[routeName];
-
             if (mode) {
               aiNavigation.navigate('AIPlanner', { mode });
             } else {
@@ -155,7 +152,13 @@ const TabIcon = ({ name, color, size }: any) => {
   return <Icon color={color} size={size} />;
 };
 
-export const TabNavigator = ({ isDarkMode, toggleDarkMode }: any) => {
+// Props przekazywane z App.tsx
+interface TabNavigatorProps {
+  isDarkMode: boolean;
+  toggleDarkMode: () => void;
+}
+
+export const TabNavigator = ({ isDarkMode, toggleDarkMode }: TabNavigatorProps) => {
   return (
     <Tab.Navigator
       initialRouteName="Dashboard"
@@ -188,7 +191,7 @@ export const TabNavigator = ({ isDarkMode, toggleDarkMode }: any) => {
 const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
-    bottom: 0, // PRZYPIĘTE DO SAMEGO DOŁU
+    bottom: 0,
     left: MARGIN,
     right: MARGIN,
     height: BAR_HEIGHT,
@@ -197,7 +200,7 @@ const styles = StyleSheet.create({
 
   contentContainer: {
     flexDirection: 'row',
-    height: 70, // Stała wysokość dla interakcji z ikonami (reszta to bezpieczny margines dolny iOS)
+    height: 70,
   },
 
   tabItem: {
@@ -220,7 +223,6 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    // Dodajemy delikatny cień, by odciąć przycisk od tła bento-gridu
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -238,7 +240,7 @@ const styles = StyleSheet.create({
   floatingAIButton: {
     position: 'absolute',
     right: 20,
-    bottom: Platform.OS === 'ios' ? 140 : 110, // Dostosowane, by nie wisiało zbyt wysoko nad nowym navbaru
+    bottom: Platform.OS === 'ios' ? 140 : 110,
     backgroundColor: '#5152D6',
     width: 56,
     height: 56,

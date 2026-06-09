@@ -1,9 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TextInput,
   TouchableOpacity,
   ScrollView,
@@ -19,8 +18,6 @@ import {
 } from 'react-native';
 import {
   Trash2,
-  Sun,
-  Moon,
   Search,
   Calendar,
   Clock,
@@ -28,12 +25,11 @@ import {
   Target,
   Crown,
   CheckCircle2,
-  User,
-  Bell,
   TrendingUp,
   Flame,
   Send,
   X,
+  Bell,
   Home,
   Compass,
   BarChart3,
@@ -51,6 +47,8 @@ import {
   deleteTask as deleteTaskFromFirebase,
 } from '../services/taskService';
 
+import TopBar, { TOP_BAR_HEIGHT } from '../components/TopBar';
+
 interface Task {
   id: string;
   text: string;
@@ -60,7 +58,6 @@ interface Task {
 }
 
 type FilterType = 'all' | 'pending' | 'completed';
-const { height } = Dimensions.get('window');
 
 const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
   const [task, setTask] = useState('');
@@ -76,17 +73,12 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
 
   const colors = {
     primary: '#6366F1',
-    primaryDark: '#4F46E5',
-    secondary: '#8B5CF6',
-    accent: '#EC4899',
     success: '#10B981',
     danger: '#EF4444',
     warning: '#F59E0B',
-    info: '#3B82F6',
     dark: {
       background: '#09090B',
       surface: '#18181B',
-      surfaceLight: '#27272A',
       text: '#FAFAFA',
       textSecondary: '#A1A1AA',
       border: '#27272A',
@@ -95,7 +87,6 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
     light: {
       background: '#FFFFFF',
       surface: '#F8FAFC',
-      surfaceLight: '#F1F5F9',
       text: '#0F172A',
       textSecondary: '#64748B',
       border: '#E2E8F0',
@@ -107,11 +98,7 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
 
   useEffect(() => {
     const currentUser = auth().currentUser;
-    if (!currentUser) {
-      setTaskList([]);
-      setLoading(false);
-      return;
-    }
+    if (!currentUser) { setTaskList([]); setLoading(false); return; }
 
     const unsubscribe = subscribeToTasks((tasksFromDb) => {
       setTaskList(tasksFromDb as Task[]);
@@ -123,123 +110,65 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
       if (!user) setTaskList([]);
     });
 
-    return () => {
-      unsubscribe();
-      authUnsubscribe();
-    };
+    return () => { unsubscribe(); authUnsubscribe(); };
   }, []);
 
   const handleAddTask = async () => {
     if (task.trim().length === 0) return;
-    try {
-      await addTask(task.trim());
-      setTask('');
-      Keyboard.dismiss();
-    } catch (error) {
-      Alert.alert('Błąd', 'Nie udało się dodać zadania.');
-    }
+    try { await addTask(task.trim()); setTask(''); Keyboard.dismiss(); }
+    catch { Alert.alert('Błąd', 'Nie udało się dodać zadania.'); }
   };
 
   const handleToggleTask = async (item: Task) => {
-    try {
-      await toggleTaskInFirebase(item.id, item.completed);
-    } catch (error) {
-      Alert.alert('Błąd', 'Nie udało się zaktualizować statusu.');
-    }
+    try { await toggleTaskInFirebase(item.id, item.completed); }
+    catch { Alert.alert('Błąd', 'Nie udało się zaktualizować statusu.'); }
   };
 
   const handleDeleteTask = async (id: string) => {
-    Alert.alert(
-      'Usuń zadanie',
-      'Czy na pewno chcesz usunąć to zadanie?',
-      [
-        { text: 'Anuluj', style: 'cancel' },
-        {
-          text: 'Usuń',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteTaskFromFirebase(id);
-            } catch (error) {
-              Alert.alert('Błąd', 'Nie udało się usunąć elementu.');
-            }
-          },
-        },
-      ]
-    );
+    Alert.alert('Usuń zadanie', 'Czy na pewno chcesz usunąć to zadanie?', [
+      { text: 'Anuluj', style: 'cancel' },
+      { text: 'Usuń', style: 'destructive', onPress: async () => {
+        try { await deleteTaskFromFirebase(id); }
+        catch { Alert.alert('Błąd', 'Nie udało się usunąć elementu.'); }
+      }},
+    ]);
   };
 
   const handleLogout = async () => {
-    try {
-      setShowSettings(false);
-      await auth().signOut();
-      navigation.navigate('Login');
-    } catch (error) {
-      console.error('Błąd podczas wylogowywania:', error);
-    }
+    try { setShowSettings(false); await auth().signOut(); }
+    catch (e) { console.error(e); }
   };
 
   const filteredTasks = taskList.filter(t => {
-    const matchesFilter =
-      activeFilter === 'all' ? true :
-      activeFilter === 'pending' ? !t.completed :
-      t.completed;
-    const matchesSearch = t.text.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
+    const matchesFilter = activeFilter === 'all' ? true : activeFilter === 'pending' ? !t.completed : t.completed;
+    return matchesFilter && t.text.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   const pendingTasks = filteredTasks.filter(t => !t.completed);
   const completedTasks = filteredTasks.filter(t => t.completed);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  };
+  const onRefresh = () => { setRefreshing(true); setTimeout(() => setRefreshing(false), 1000); };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={theme.background}
-        translucent={false}
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
+
+      {/* ─── TOPBAR — identyczny jak w Dashboard ─── */}
+      <TopBar
+        isDarkMode={isDarkMode}
+        toggleDarkMode={toggleDarkMode}
+        hasNotification={pendingTasks.length > 0}
+        onNotificationPress={() => setShowNotifications(true)}
+        onAvatarPress={() => setShowSettings(true)}
       />
 
-      {/* NAVBAR — kompaktowy */}
-      <View style={[styles.navbar, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <View style={styles.navbarLeft}>
-          <View style={[styles.logoGradient, { backgroundColor: colors.primary }]}>
-            <Crown size={14} color="#FFF" />
-          </View>
-          <Text style={[styles.navbarTitle, { color: theme.text }]}>TaskFlow</Text>
-        </View>
-        <View style={styles.navbarRight}>
-          <TouchableOpacity onPress={toggleDarkMode} style={styles.navIconButton}>
-            {isDarkMode ? <Sun size={18} color={theme.text} /> : <Moon size={18} color={theme.text} />}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowNotifications(true)} style={styles.navIconButton}>
-            <Bell size={18} color={theme.text} />
-            {pendingTasks.length > 0 && (
-              <View style={[styles.badgeDot, { backgroundColor: colors.primary }]} />
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowSettings(true)} style={styles.navIconButton}>
-            <User size={18} color={theme.text} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
-          }
+          contentContainerStyle={[styles.scrollContent, { paddingTop: TOP_BAR_HEIGHT + 12 }]}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         >
-          {/* Welcome Section */}
+          {/* Welcome */}
           <View style={styles.welcomeSection}>
             <View>
               <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>Witaj z powrotem,</Text>
@@ -251,69 +180,37 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
             </View>
           </View>
 
-          {/* Stats Cards */}
+          {/* Stats */}
           <View style={styles.statsContainer}>
-            <View style={[styles.statCard, { backgroundColor: theme.surface }]}>
-              <View style={[styles.statIconBg, { backgroundColor: colors.primary + '20' }]}>
-                <Target size={18} color={colors.primary} />
+            {[
+              { icon: <Target size={18} color={colors.primary} />, bg: colors.primary + '20', value: pendingTasks.length, label: 'Aktywne' },
+              { icon: <CheckCircle2 size={18} color={colors.success} />, bg: colors.success + '20', value: completedTasks.length, label: 'Ukończone' },
+              { icon: <TrendingUp size={18} color={colors.warning} />, bg: colors.warning + '20', value: taskList.length > 0 ? Math.round((completedTasks.length / taskList.length) * 100) : 0, label: 'Postęp', suffix: '%' },
+            ].map((s, i) => (
+              <View key={i} style={[styles.statCard, { backgroundColor: theme.surface }]}>
+                <View style={[styles.statIconBg, { backgroundColor: s.bg }]}>{s.icon}</View>
+                <Text style={[styles.statValue, { color: theme.text }]}>{s.value}{s.suffix ?? ''}</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{s.label}</Text>
               </View>
-              <Text style={[styles.statValue, { color: theme.text }]}>{pendingTasks.length}</Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Aktywne</Text>
-            </View>
-            <View style={[styles.statCard, { backgroundColor: theme.surface }]}>
-              <View style={[styles.statIconBg, { backgroundColor: colors.success + '20' }]}>
-                <CheckCircle2 size={18} color={colors.success} />
-              </View>
-              <Text style={[styles.statValue, { color: theme.text }]}>{completedTasks.length}</Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Ukończone</Text>
-            </View>
-            <View style={[styles.statCard, { backgroundColor: theme.surface }]}>
-              <View style={[styles.statIconBg, { backgroundColor: colors.warning + '20' }]}>
-                <TrendingUp size={18} color={colors.warning} />
-              </View>
-              <Text style={[styles.statValue, { color: theme.text }]}>
-                {taskList.length > 0 ? Math.round((completedTasks.length / taskList.length) * 100) : 0}%
-              </Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Postęp</Text>
-            </View>
+            ))}
           </View>
 
           {/* Search + Filters */}
           <View style={styles.searchSection}>
             <View style={[styles.searchContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <Search size={16} color={theme.textSecondary} />
-              <TextInput
-                style={[styles.searchInput, { color: theme.text }]}
-                placeholder="Szukaj zadań..."
-                placeholderTextColor={theme.textSecondary}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery !== '' && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <X size={14} color={theme.textSecondary} />
-                </TouchableOpacity>
-              )}
+              <TextInput style={[styles.searchInput, { color: theme.text }]} placeholder="Szukaj zadań..." placeholderTextColor={theme.textSecondary} value={searchQuery} onChangeText={setSearchQuery} />
+              {searchQuery !== '' && <TouchableOpacity onPress={() => setSearchQuery('')}><X size={14} color={theme.textSecondary} /></TouchableOpacity>}
             </View>
-
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
               {(['all', 'pending', 'completed'] as FilterType[]).map((filter) => (
                 <TouchableOpacity
                   key={filter}
-                  style={[
-                    styles.filterChip,
-                    { borderColor: theme.border },
-                    activeFilter === filter && { backgroundColor: colors.primary, borderColor: colors.primary },
-                  ]}
+                  style={[styles.filterChip, { borderColor: theme.border }, activeFilter === filter && { backgroundColor: colors.primary, borderColor: colors.primary }]}
                   onPress={() => setActiveFilter(filter)}
                 >
-                  <Text style={[
-                    styles.filterText,
-                    { color: activeFilter === filter ? '#FFF' : theme.textSecondary },
-                  ]}>
-                    {filter === 'all' && 'Wszystkie'}
-                    {filter === 'pending' && 'Do zrobienia'}
-                    {filter === 'completed' && 'Zrobione'}
+                  <Text style={[styles.filterText, { color: activeFilter === filter ? '#FFF' : theme.textSecondary }]}>
+                    {filter === 'all' ? 'Wszystkie' : filter === 'pending' ? 'Do zrobienia' : 'Zrobione'}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -323,10 +220,7 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
           {/* Tasks */}
           <View style={styles.tasksSection}>
             {pendingTasks.map((item) => (
-              <View
-                key={item.id}
-                style={[styles.taskCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-              >
+              <View key={item.id} style={[styles.taskCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
                 <TouchableOpacity style={styles.taskCheckbox} onPress={() => handleToggleTask(item)}>
                   <View style={[styles.checkbox, item.completed && styles.checkboxChecked]}>
                     {item.completed && <CheckCircle2 size={14} color="#FFF" />}
@@ -335,18 +229,8 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
                 <View style={styles.taskContent}>
                   <Text style={[styles.taskTitle, { color: theme.text }]}>{item.text}</Text>
                   <View style={styles.taskMeta}>
-                    <View style={styles.metaItem}>
-                      <Calendar size={10} color={theme.textSecondary} />
-                      <Text style={[styles.metaText, { color: theme.textSecondary }]}>
-                        {new Date().toLocaleDateString()}
-                      </Text>
-                    </View>
-                    <View style={styles.metaItem}>
-                      <Clock size={10} color={theme.textSecondary} />
-                      <Text style={[styles.metaText, { color: theme.textSecondary }]}>
-                        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </Text>
-                    </View>
+                    <View style={styles.metaItem}><Calendar size={10} color={theme.textSecondary} /><Text style={[styles.metaText, { color: theme.textSecondary }]}>{new Date().toLocaleDateString()}</Text></View>
+                    <View style={styles.metaItem}><Clock size={10} color={theme.textSecondary} /><Text style={[styles.metaText, { color: theme.textSecondary }]}>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text></View>
                   </View>
                 </View>
                 <TouchableOpacity onPress={() => handleDeleteTask(item.id)} style={styles.taskDelete}>
@@ -362,18 +246,10 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
                   <Text style={[styles.sectionCount, { color: colors.success }]}>{completedTasks.length}</Text>
                 </View>
                 {completedTasks.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.completedTask, { backgroundColor: theme.surface }]}
-                    onPress={() => handleToggleTask(item)}
-                  >
+                  <TouchableOpacity key={item.id} style={[styles.completedTask, { backgroundColor: theme.surface }]} onPress={() => handleToggleTask(item)}>
                     <CheckCircle2 size={18} color={colors.success} />
-                    <Text style={[styles.completedTaskText, { color: theme.textSecondary }]}>
-                      {item.text}
-                    </Text>
-                    <TouchableOpacity onPress={() => handleDeleteTask(item.id)}>
-                      <Trash2 size={14} color={theme.textSecondary} />
-                    </TouchableOpacity>
+                    <Text style={[styles.completedTaskText, { color: theme.textSecondary }]}>{item.text}</Text>
+                    <TouchableOpacity onPress={() => handleDeleteTask(item.id)}><Trash2 size={14} color={theme.textSecondary} /></TouchableOpacity>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -381,13 +257,9 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
 
             {filteredTasks.length === 0 && !loading && (
               <View style={styles.emptyState}>
-                <View style={styles.emptyIconBg}>
-                  <Brain size={48} color={colors.primary} />
-                </View>
+                <View style={styles.emptyIconBg}><Brain size={48} color={colors.primary} /></View>
                 <Text style={[styles.emptyTitle, { color: theme.text }]}>Brak zadań</Text>
-                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                  Dodaj swoje pierwsze zadanie i zacznij działać!
-                </Text>
+                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Dodaj swoje pierwsze zadanie i zacznij działać!</Text>
               </View>
             )}
           </View>
@@ -397,11 +269,7 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
 
         {/* BOTTOM INPUT PANEL */}
         <View style={[styles.inputPanelWrapper, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
-          <View style={[styles.inputContainer, {
-            backgroundColor: theme.background,
-            borderColor: theme.border,
-            borderWidth: 1,
-          }]}>
+          <View style={[styles.inputContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
             <TextInput
               style={[styles.taskInput, { color: theme.text }]}
               placeholder="Dodaj zadanie..."
@@ -412,10 +280,7 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
               returnKeyType="send"
             />
             <TouchableOpacity
-              style={[
-                styles.sendButton,
-                task.trim() ? { backgroundColor: colors.primary } : { backgroundColor: theme.border },
-              ]}
+              style={[styles.sendButton, task.trim() ? { backgroundColor: colors.primary } : { backgroundColor: theme.border }]}
               onPress={handleAddTask}
               disabled={!task.trim()}
             >
@@ -423,7 +288,6 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
             </TouchableOpacity>
           </View>
 
-          {/* Bottom Navigation */}
           <View style={styles.bottomNav}>
             <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Dashboard')}>
               <Home size={20} color={theme.textSecondary} />
@@ -456,15 +320,10 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
                     <Settings size={18} color={theme.text} />
                     <Text style={[styles.modalTitle, { color: theme.text }]}>Ustawienia</Text>
                   </View>
-                  <TouchableOpacity onPress={() => setShowSettings(false)} hitSlop={8}>
-                    <X size={20} color={theme.textSecondary} />
-                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setShowSettings(false)} hitSlop={8}><X size={20} color={theme.textSecondary} /></TouchableOpacity>
                 </View>
                 <View style={styles.modalContent}>
-                  <TouchableOpacity
-                    style={[styles.modalActionItem, { backgroundColor: isDarkMode ? '#292524' : '#FEF2F2' }]}
-                    onPress={handleLogout}
-                  >
+                  <TouchableOpacity style={[styles.modalActionItem, { backgroundColor: isDarkMode ? '#292524' : '#FEF2F2' }]} onPress={handleLogout}>
                     <LogOut size={18} color={colors.danger} />
                     <Text style={[styles.modalActionText, { color: colors.danger }]}>Wyloguj się z konta</Text>
                   </TouchableOpacity>
@@ -486,22 +345,16 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
                     <Bell size={18} color={theme.text} />
                     <Text style={[styles.modalTitle, { color: theme.text }]}>Powiadomienia</Text>
                   </View>
-                  <TouchableOpacity onPress={() => setShowNotifications(false)} hitSlop={8}>
-                    <X size={20} color={theme.textSecondary} />
-                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setShowNotifications(false)} hitSlop={8}><X size={20} color={theme.textSecondary} /></TouchableOpacity>
                 </View>
                 <View style={styles.modalContent}>
                   {pendingTasks.length > 0 ? (
                     <View style={[styles.notifRow, { borderBottomColor: theme.border }]}>
                       <View style={[styles.notifStatus, { backgroundColor: colors.warning }]} />
-                      <Text style={[styles.notifBody, { color: theme.text }]}>
-                        Masz <Text style={{ fontWeight: '700' }}>{pendingTasks.length}</Text> nieukończonych zadań.
-                      </Text>
+                      <Text style={[styles.notifBody, { color: theme.text }]}>Masz <Text style={{ fontWeight: '700' }}>{pendingTasks.length}</Text> nieukończonych zadań.</Text>
                     </View>
                   ) : (
-                    <Text style={[styles.notifEmpty, { color: theme.textSecondary }]}>
-                      Brak nowych powiadomień 🎉
-                    </Text>
+                    <Text style={[styles.notifEmpty, { color: theme.textSecondary }]}>Brak nowych powiadomień 🎉</Text>
                   )}
                 </View>
               </View>
@@ -509,98 +362,40 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  scrollContent: { paddingBottom: 20 },
 
-  // Navbar — kompaktowy
-  navbar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  navbarLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  navbarTitle: { fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
-  navbarRight: { flexDirection: 'row', gap: 4 },
-  navIconButton: {
-    width: 32, height: 32, borderRadius: 16,
-    justifyContent: 'center', alignItems: 'center', position: 'relative',
-  },
-  badgeDot: {
-    position: 'absolute', top: 6, right: 6,
-    width: 7, height: 7, borderRadius: 3.5,
-  },
-  logoGradient: {
-    width: 26, height: 26, borderRadius: 8,
-    justifyContent: 'center', alignItems: 'center',
-  },
-
-  scrollContent: { paddingTop: 12, paddingBottom: 20 },
-
-  welcomeSection: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', paddingHorizontal: 20, marginBottom: 16,
-  },
+  welcomeSection: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 16 },
   welcomeText: { fontSize: 12, fontWeight: '500', marginBottom: 2 },
   userName: { fontSize: 20, fontWeight: '800', letterSpacing: -0.3 },
-  streakBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
-  },
+  streakBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
   streakText: { fontSize: 12, fontWeight: '700' },
 
   statsContainer: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 20 },
-  statCard: {
-    flex: 1, padding: 12, borderRadius: 14, alignItems: 'center', gap: 6,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
-  },
+  statCard: { flex: 1, padding: 12, borderRadius: 14, alignItems: 'center', gap: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   statIconBg: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   statValue: { fontSize: 20, fontWeight: '800' },
   statLabel: { fontSize: 10, fontWeight: '500' },
 
   searchSection: { paddingHorizontal: 20, marginBottom: 20, gap: 10 },
-  searchContainer: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12, borderWidth: 1,
-  },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12, borderWidth: 1 },
   searchInput: { flex: 1, fontSize: 14, fontWeight: '500' },
   filterScroll: { flexGrow: 0 },
-  filterChip: {
-    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
-    borderWidth: 1, marginRight: 8,
-  },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1, marginRight: 8 },
   filterText: { fontSize: 12, fontWeight: '600' },
 
   tasksSection: { paddingHorizontal: 20, gap: 10 },
-  sectionHeader: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: 8,
-  },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   sectionTitle: { fontSize: 15, fontWeight: '700' },
   sectionCount: { fontSize: 13, fontWeight: '600' },
-  taskCard: {
-    flexDirection: 'row', alignItems: 'center', padding: 12,
-    borderRadius: 14, borderWidth: 1, marginBottom: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 2, elevation: 1,
-  },
+  taskCard: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 14, borderWidth: 1, marginBottom: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 },
   taskCheckbox: { marginRight: 12 },
-  checkbox: {
-    width: 20, height: 20, borderRadius: 10, borderWidth: 2,
-    borderColor: '#94A3B8', justifyContent: 'center', alignItems: 'center',
-  },
+  checkbox: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#94A3B8', justifyContent: 'center', alignItems: 'center' },
   checkboxChecked: { backgroundColor: '#10B981', borderColor: '#10B981' },
   taskContent: { flex: 1, gap: 5 },
   taskTitle: { fontSize: 14, fontWeight: '600' },
@@ -610,73 +405,32 @@ const styles = StyleSheet.create({
   taskDelete: { padding: 6 },
 
   completedSection: { marginTop: 12, gap: 8 },
-  completedTask: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12,
-  },
-  completedTaskText: {
-    flex: 1, fontSize: 13, fontWeight: '500', textDecorationLine: 'line-through',
-  },
+  completedTask: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12 },
+  completedTaskText: { flex: 1, fontSize: 13, fontWeight: '500', textDecorationLine: 'line-through' },
 
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 16 },
-  emptyIconBg: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-    justifyContent: 'center', alignItems: 'center',
-  },
+  emptyIconBg: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(99, 102, 241, 0.1)', justifyContent: 'center', alignItems: 'center' },
   emptyTitle: { fontSize: 18, fontWeight: '700' },
   emptyText: { fontSize: 13, textAlign: 'center', paddingHorizontal: 40 },
 
-  // Bottom input panel
-  inputPanelWrapper: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    paddingHorizontal: 16, paddingTop: 10,
-    paddingBottom: Platform.OS === 'ios' ? 30 : 20,
-    borderTopWidth: 1,
-    shadowColor: '#000', shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08, shadowRadius: 10, elevation: 10,
-  },
-  inputContainer: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20, borderWidth: 1, marginBottom: 10,
-  },
+  inputPanelWrapper: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingTop: 10, paddingBottom: Platform.OS === 'ios' ? 30 : 20, borderTopWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 10 },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, marginBottom: 10 },
   taskInput: { flex: 1, fontSize: 14, fontWeight: '500', paddingVertical: 6 },
-  sendButton: {
-    width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center',
-  },
+  sendButton: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
 
-  bottomNav: {
-    flexDirection: 'row', justifyContent: 'space-around',
-    alignItems: 'center', paddingTop: 6,
-  },
+  bottomNav: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingTop: 6 },
   navItem: { alignItems: 'center', gap: 3 },
   navItemText: { fontSize: 10, fontWeight: '600' },
 
-  // Modals
-  modalBackdrop: {
-    flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    paddingTop: 24, paddingHorizontal: 24,
-    paddingBottom: Platform.OS === 'ios' ? 44 : 24,
-  },
-  modalHeader: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: 24,
-  },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'flex-end' },
+  modalSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 24, paddingHorizontal: 24, paddingBottom: Platform.OS === 'ios' ? 44 : 24 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   modalTitleContainer: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   modalTitle: { fontSize: 18, fontWeight: '800' },
   modalContent: { marginTop: 4 },
-  modalActionItem: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 8, padding: 16, borderRadius: 16,
-  },
+  modalActionItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16, borderRadius: 16 },
   modalActionText: { fontSize: 15, fontWeight: '700' },
-  notifRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 16, borderBottomWidth: 1,
-  },
+  notifRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1 },
   notifStatus: { width: 8, height: 8, borderRadius: 4, marginRight: 12 },
   notifBody: { fontSize: 14, fontWeight: '400', flex: 1, lineHeight: 20 },
   notifEmpty: { fontSize: 14, textAlign: 'center', paddingVertical: 32, fontWeight: '500' },
