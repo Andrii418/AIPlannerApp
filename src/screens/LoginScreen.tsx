@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,8 +15,13 @@ import auth from '@react-native-firebase/auth';
 import { Mail, Lock, LogIn, Sparkles } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
+import { hideBootSplash } from '../utils/bootSplash';
 
 const LoginScreen = ({ navigation }: any) => {
+  useEffect(() => {
+    hideBootSplash();
+  }, []);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailFocused, setEmailFocused] = useState(false);

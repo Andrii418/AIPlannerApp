@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StatusBar, ActivityIndicator, View, StyleSheet } from 'react-native';
+import { StatusBar, View, StyleSheet } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import LinearGradient from 'react-native-linear-gradient';
 
@@ -37,12 +37,9 @@ const App = () => {
     return subscriber;
   }, [initializing]);
 
+  // Podczas inicjalizacji auth natywny splash (BootSplash) pozostaje widoczny.
   if (initializing) {
-    return (
-      <View style={[styles.full, styles.center, { backgroundColor: isDarkMode ? Colors.darkBackground : '#F8F9FE' }]}>
-        <ActivityIndicator size="large" color="#7B61FF" />
-      </View>
-    );
+    return null;
   }
 
   // Tworzymy komponenty z zamkniętymi props – unikamy re-renderów i problemów z undefined
@@ -114,7 +111,6 @@ const App = () => {
 
 const styles = StyleSheet.create({
   full: { flex: 1 },
-  center: { justifyContent: 'center', alignItems: 'center' },
 });
 
 export default App;

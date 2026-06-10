@@ -34,6 +34,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import { hideBootSplash } from '../utils/bootSplash';
 
 const { width } = Dimensions.get('window');
 
@@ -72,6 +73,10 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ isDarkMode, toggleDarkMode }) => {
+  useEffect(() => {
+    hideBootSplash();
+  }, []);
+
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const today = getFormattedDate();

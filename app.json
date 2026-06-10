@@ -1,4 +1,10 @@
 {
   "name": "SmartPlanner",
-  "displayName": "SmartPlanner"
+  "displayName": "AI Smart Planner",
+  "icon": "./assets/brand/app-icon-1024.png",
+  "splash": {
+    "image": "./assets/brand/splash-logo.png",
+    "backgroundColor": "#003366",
+    "resizeMode": "contain"
+  }
 }
