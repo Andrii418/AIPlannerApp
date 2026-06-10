@@ -27,20 +27,20 @@ import {
   ChevronUp,
   TrendingUp,
   Target,
+  Bell,
+  LogOut,
+  Settings,
 } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   withSpring,
-  withRepeat,
-  withSequence,
   withDelay,
   FadeInDown,
   FadeIn,
   interpolate,
   Easing,
-  cancelAnimation,
 } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
 import { Colors } from '../theme';
@@ -196,38 +196,6 @@ const CourseCard = ({ course, index, textColor, isDarkMode, onView, onDelete }: 
   );
 };
 
-// ─── FAB ─────────────────────────────────────────────────────────────────────
-const PulseFAB = ({ onPress }: { onPress: () => void }) => {
-  const scale = useSharedValue(1);
-  const pulseScale = useSharedValue(1);
-  const pulseOpacity = useSharedValue(0.5);
-
-  useEffect(() => {
-    pulseScale.value = withRepeat(withSequence(withTiming(1.6, { duration: 1000 }), withTiming(1, { duration: 1000 })), -1, false);
-    pulseOpacity.value = withRepeat(withSequence(withTiming(0, { duration: 1000 }), withTiming(0.4, { duration: 1000 })), -1, false);
-    scale.value = withRepeat(withSequence(withTiming(1, { duration: 1000 }), withTiming(1.08, { duration: 1000 }), withTiming(1, { duration: 1000 })), -1, false);
-    return () => { cancelAnimation(scale); cancelAnimation(pulseScale); cancelAnimation(pulseOpacity); };
-  }, []);
-
-  const fabStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulseScale.value }], opacity: pulseOpacity.value }));
-
-  return (
-    <View style={styles.fabContainer}>
-      <Animated.View style={[styles.fabPulse, pulseStyle]}>
-        <LinearGradient colors={['#A78BFA', '#7B61FF']} style={StyleSheet.absoluteFill} />
-      </Animated.View>
-      <Animated.View style={fabStyle}>
-        <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
-          <LinearGradient colors={['#7B61FF', '#5152D6']} style={styles.fab}>
-            <Plus size={28} color="white" />
-          </LinearGradient>
-        </TouchableOpacity>
-      </Animated.View>
-    </View>
-  );
-};
-
 // ─── Clock Button ─────────────────────────────────────────────────────────────
 const ClockButton = ({ onPress }: { onPress: () => void }) => {
   const rotate = useSharedValue(0);
@@ -290,6 +258,8 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
   const [newCourseHours, setNewCourseHours] = useState('');
   const [newTopicsList, setNewTopicsList] = useState([{ name: '' }]);
   const [isSaving, setIsSaving] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const modalTranslateY = useSharedValue(SCREEN_HEIGHT);
   const modalStyle = useAnimatedStyle(() => ({ transform: [{ translateY: modalTranslateY.value }] }));
@@ -301,6 +271,21 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
   }, [showAddModal]);
 
   const textColor = isDarkMode ? Colors.darkText : '#1E293B';
+  const modalSurface = isDarkMode ? '#1E293B' : '#FFFFFF';
+  const modalTextMuted = isDarkMode ? '#94A3B8' : '#64748B';
+  const modalBorder = isDarkMode ? Colors.darkBorder : '#E2E8F0';
+
+  const incompleteCourses = courses.filter(c => (c.progress || 0) < 100);
+  const hasNotification = incompleteCourses.length > 0;
+
+  const handleLogout = async () => {
+    try {
+      setShowSettings(false);
+      await auth().signOut();
+    } catch (error) {
+      console.error('Błąd podczas wylogowywania:', error);
+    }
+  };
 
   useEffect(() => {
     let unsubFirestore: (() => void) | null = null;
@@ -410,6 +395,9 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
       <TopBar
         isDarkMode={isDarkMode}
         toggleDarkMode={toggleDarkMode}
+        hasNotification={hasNotification}
+        onNotificationPress={() => setShowNotifications(true)}
+        onAvatarPress={() => setShowSettings(true)}
       />
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingTop: TOP_BAR_HEIGHT + 16 }]}
@@ -447,7 +435,6 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
         )}
         <View style={{ height: 120 }} />
       </ScrollView>
-      <PulseFAB onPress={() => setShowAddModal(true)} />
     </View>
   );
 
@@ -464,6 +451,9 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
           isDarkMode={isDarkMode}
           toggleDarkMode={toggleDarkMode}
           title={selectedCourse.name}
+          hasNotification={hasNotification}
+          onNotificationPress={() => setShowNotifications(true)}
+          onAvatarPress={() => setShowSettings(true)}
         />
         <ScrollView
           contentContainerStyle={{ paddingTop: TOP_BAR_HEIGHT + 16, paddingBottom: 40 }}
@@ -626,10 +616,78 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
     </Modal>
   );
 
+  const renderTopBarModals = () => (
+    <>
+      <Modal visible={showSettings} transparent animationType="fade" onRequestClose={() => setShowSettings(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowSettings(false)}>
+          <View style={styles.topBarModalBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={[styles.topBarModalSheet, { backgroundColor: modalSurface }]}>
+                <View style={styles.topBarModalHeader}>
+                  <View style={styles.topBarModalTitleRow}>
+                    <Settings size={18} color={textColor} />
+                    <Text style={[styles.topBarModalTitle, { color: textColor }]}>Ustawienia</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setShowSettings(false)} hitSlop={8}>
+                    <X size={20} color={modalTextMuted} />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.topBarModalContent}>
+                  <TouchableOpacity
+                    style={[styles.topBarModalAction, { backgroundColor: isDarkMode ? '#292524' : '#FEF2F2' }]}
+                    onPress={handleLogout}
+                  >
+                    <LogOut size={18} color="#EF4444" />
+                    <Text style={styles.topBarModalActionText}>Wyloguj się z konta</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      <Modal visible={showNotifications} transparent animationType="fade" onRequestClose={() => setShowNotifications(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowNotifications(false)}>
+          <View style={styles.topBarModalBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={[styles.topBarModalSheet, { backgroundColor: modalSurface }]}>
+                <View style={styles.topBarModalHeader}>
+                  <View style={styles.topBarModalTitleRow}>
+                    <Bell size={18} color={textColor} />
+                    <Text style={[styles.topBarModalTitle, { color: textColor }]}>Powiadomienia</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setShowNotifications(false)} hitSlop={8}>
+                    <X size={20} color={modalTextMuted} />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.topBarModalContent}>
+                  {incompleteCourses.length > 0 ? (
+                    incompleteCourses.slice(0, 3).map((course, i) => (
+                      <View key={course.id ?? i} style={[styles.notifRow, { borderBottomColor: modalBorder }]}>
+                        <View style={[styles.notifStatus, { backgroundColor: '#7B61FF' }]} />
+                        <Text style={[styles.notifBody, { color: textColor }]}>
+                          Plan &quot;{course.name}&quot; jest ukończony w {course.progress || 0}%.
+                        </Text>
+                      </View>
+                    ))
+                  ) : (
+                    <Text style={[styles.notifEmpty, { color: modalTextMuted }]}>Brak nowych powiadomień 🎉</Text>
+                  )}
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    </>
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: isDarkMode ? '#0B0F19' : '#F8FAFC' }}>
       {selectedCourse ? renderDetails() : renderCourseList()}
       {renderModal()}
+      {renderTopBarModals()}
     </View>
   );
 };
@@ -673,10 +731,18 @@ const styles = StyleSheet.create({
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   actionBtnText: { fontWeight: '700', fontSize: 13 },
 
-  // FAB
-  fabContainer: { position: 'absolute', bottom: 90, right: 20, alignItems: 'center', justifyContent: 'center' },
-  fabPulse: { position: 'absolute', width: 60, height: 60, borderRadius: 30 },
-  fab: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 10 },
+  topBarModalBackdrop: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'flex-end' },
+  topBarModalSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 24, paddingHorizontal: 24, paddingBottom: Platform.OS === 'ios' ? 90 : 75 },
+  topBarModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  topBarModalTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  topBarModalTitle: { fontSize: 18, fontWeight: '800' },
+  topBarModalContent: { marginTop: 4 },
+  topBarModalAction: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16, borderRadius: 16 },
+  topBarModalActionText: { fontSize: 15, fontWeight: '700', color: '#EF4444' },
+  notifRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1 },
+  notifStatus: { width: 8, height: 8, borderRadius: 4, marginRight: 12 },
+  notifBody: { fontSize: 14, fontWeight: '400', flex: 1, lineHeight: 20 },
+  notifEmpty: { fontSize: 14, textAlign: 'center', paddingVertical: 32, fontWeight: '500' },
 
   // Empty
   emptyState: { padding: 40, alignItems: 'center' },

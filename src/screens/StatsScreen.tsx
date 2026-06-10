@@ -8,6 +8,8 @@ import {
   Platform,
   StatusBar,
   TouchableOpacity,
+  Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
@@ -25,6 +27,10 @@ import {
   TrendingDown,
   Sparkles,
   Timer,
+  Bell,
+  LogOut,
+  Settings,
+  X,
 } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
@@ -487,6 +493,8 @@ const StatsScreen = ({ isDarkMode, toggleDarkMode }: any) => {
   const trackColor = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
 
   const [rangeTab, setRangeTab] = useState<RangeKey>('week');
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   // STAN DANYCH
   const [loading, setLoading] = useState(true);
@@ -625,6 +633,18 @@ const StatsScreen = ({ isDarkMode, toggleDarkMode }: any) => {
 
   const tasksPercent = tasksTotal > 0 ? Math.round((tasksDone / tasksTotal) * 100) : 0;
   const overallScore = Math.round((avgStudyProgress + tasksPercent) / 2);
+  const pendingTasksCount = tasksTotal - tasksDone;
+  const incompletePlans = studyPlans.filter(p => (p.progress || 0) < 100);
+  const hasNotification = pendingTasksCount > 0 || !!nextTrip || incompletePlans.length > 0;
+
+  const handleLogout = async () => {
+    try {
+      setShowSettings(false);
+      await auth().signOut();
+    } catch (error) {
+      console.error('Błąd podczas wylogowywania:', error);
+    }
+  };
 
   // Dane do wykresu słupkowego — postępy planów nauki
   const studyChartData = studyPlans.slice(0, 6).map(p => p.progress || 0);
@@ -681,7 +701,13 @@ const StatsScreen = ({ isDarkMode, toggleDarkMode }: any) => {
     <View style={[styles.container, { backgroundColor: screenBg }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
 
-      <TopBar isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
+      <TopBar
+        isDarkMode={isDarkMode}
+        toggleDarkMode={toggleDarkMode}
+        hasNotification={hasNotification}
+        onNotificationPress={() => setShowNotifications(true)}
+        onAvatarPress={() => setShowSettings(true)}
+      />
 
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingTop: TOP_BAR_HEIGHT + 16 }]}
@@ -1002,6 +1028,84 @@ const StatsScreen = ({ isDarkMode, toggleDarkMode }: any) => {
 
         <View style={{ height: 120 }} />
       </ScrollView>
+
+      <Modal visible={showSettings} transparent animationType="fade" onRequestClose={() => setShowSettings(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowSettings(false)}>
+          <View style={styles.topBarModalBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={[styles.topBarModalSheet, { backgroundColor: cardBg }]}>
+                <View style={styles.topBarModalHeader}>
+                  <View style={styles.topBarModalTitleRow}>
+                    <Settings size={18} color={textColor} />
+                    <Text style={[styles.topBarModalTitle, { color: textColor }]}>Ustawienia</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setShowSettings(false)} hitSlop={8}>
+                    <X size={20} color={subTextColor} />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.topBarModalContent}>
+                  <TouchableOpacity
+                    style={[styles.topBarModalAction, { backgroundColor: isDarkMode ? '#292524' : '#FEF2F2' }]}
+                    onPress={handleLogout}
+                  >
+                    <LogOut size={18} color="#EF4444" />
+                    <Text style={styles.topBarModalActionText}>Wyloguj się z konta</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      <Modal visible={showNotifications} transparent animationType="fade" onRequestClose={() => setShowNotifications(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowNotifications(false)}>
+          <View style={styles.topBarModalBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={[styles.topBarModalSheet, { backgroundColor: cardBg }]}>
+                <View style={styles.topBarModalHeader}>
+                  <View style={styles.topBarModalTitleRow}>
+                    <Bell size={18} color={textColor} />
+                    <Text style={[styles.topBarModalTitle, { color: textColor }]}>Powiadomienia</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setShowNotifications(false)} hitSlop={8}>
+                    <X size={20} color={subTextColor} />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.topBarModalContent}>
+                  {pendingTasksCount > 0 && (
+                    <View style={[styles.notifRow, { borderBottomColor: borderColor }]}>
+                      <View style={[styles.notifStatus, { backgroundColor: '#F59E0B' }]} />
+                      <Text style={[styles.notifBody, { color: textColor }]}>
+                        Masz <Text style={{ fontWeight: '700' }}>{pendingTasksCount}</Text> nieukończone zadania.
+                      </Text>
+                    </View>
+                  )}
+                  {nextTrip && (
+                    <View style={[styles.notifRow, { borderBottomColor: borderColor }]}>
+                      <View style={[styles.notifStatus, { backgroundColor: '#2ECC71' }]} />
+                      <Text style={[styles.notifBody, { color: textColor }]}>
+                        Podróż do {nextTrip.destination} już za {calcDaysLeft(nextTrip.startDate || nextTrip.date || '')} dni!
+                      </Text>
+                    </View>
+                  )}
+                  {incompletePlans.slice(0, 2).map((plan, i) => (
+                    <View key={i} style={[styles.notifRow, { borderBottomColor: borderColor }]}>
+                      <View style={[styles.notifStatus, { backgroundColor: Colors.primary }]} />
+                      <Text style={[styles.notifBody, { color: textColor }]}>
+                        Plan &quot;{plan.name}&quot; jest ukończony w {plan.progress || 0}%.
+                      </Text>
+                    </View>
+                  ))}
+                  {!hasNotification && (
+                    <Text style={[styles.notifEmpty, { color: subTextColor }]}>Brak nowych powiadomień 🎉</Text>
+                  )}
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 };
@@ -1161,6 +1265,19 @@ const styles = StyleSheet.create({
   emptyIconWrap: { width: 64, height: 64, borderRadius: 20, backgroundColor: 'rgba(123,97,255,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
   emptyTitle: { fontSize: 17, fontWeight: '800' },
   emptyText: { fontSize: 14, textAlign: 'center', lineHeight: 22, fontWeight: '500' },
+
+  topBarModalBackdrop: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'flex-end' },
+  topBarModalSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 24, paddingHorizontal: 24, paddingBottom: Platform.OS === 'ios' ? 90 : 75 },
+  topBarModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  topBarModalTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  topBarModalTitle: { fontSize: 18, fontWeight: '800' },
+  topBarModalContent: { marginTop: 4 },
+  topBarModalAction: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16, borderRadius: 16 },
+  topBarModalActionText: { fontSize: 15, fontWeight: '700', color: '#EF4444' },
+  notifRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1 },
+  notifStatus: { width: 8, height: 8, borderRadius: 4, marginRight: 12 },
+  notifBody: { fontSize: 14, fontWeight: '400', flex: 1, lineHeight: 20 },
+  notifEmpty: { fontSize: 14, textAlign: 'center', paddingVertical: 32, fontWeight: '500' },
 });
 
 export default StatsScreen;
