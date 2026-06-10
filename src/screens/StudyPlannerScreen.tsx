@@ -10,7 +10,8 @@ import {
   TextInput,
   Alert,
   TouchableWithoutFeedback,
-  Dimensions,
+  KeyboardAvoidingView,
+  Pressable,
   StatusBar,
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
@@ -30,6 +31,7 @@ import {
   Bell,
   LogOut,
   Settings,
+  Calendar,
 } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
@@ -37,16 +39,16 @@ import Animated, {
   withTiming,
   withSpring,
   withDelay,
+  withSequence,
   FadeInDown,
   FadeIn,
+  SlideInDown,
   interpolate,
   Easing,
 } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
 import { Colors } from '../theme';
 import TopBar, { TOP_BAR_HEIGHT } from '../components/TopBar';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // ─── Animated Progress Bar ────────────────────────────────────────────────────
 const AnimatedProgressBar = ({ progress }: { progress: number }) => {
@@ -214,37 +216,161 @@ const ClockButton = ({ onPress }: { onPress: () => void }) => {
   );
 };
 
-// ─── Floating Label Input ─────────────────────────────────────────────────────
-const FloatingInput = ({ label, placeholder, value, onChangeText, keyboardType, textColor, isDarkMode }: any) => {
+// ─── Study Form Field ─────────────────────────────────────────────────────────
+const StudyFormField = ({
+  label,
+  icon,
+  value,
+  onChangeText,
+  placeholder,
+  textColor,
+  isDarkMode,
+  keyboardType,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  value: string;
+  onChangeText: (t: string) => void;
+  placeholder: string;
+  textColor: string;
+  isDarkMode: boolean;
+  keyboardType?: 'default' | 'numeric';
+}) => {
   const [focused, setFocused] = useState(false);
-  const labelAnim = useSharedValue(value ? 1 : 0);
-  const labelStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: interpolate(labelAnim.value, [0, 1], [14, -4]) },
-      { scale: interpolate(labelAnim.value, [0, 1], [1, 0.82]) },
-    ],
-    color: interpolate(labelAnim.value, [0, 1], [0.5, 1]) > 0.5 ? '#7B61FF' : '#94A3B8',
-  }));
-
-  const inputBg = isDarkMode ? 'rgba(15,23,42,0.6)' : '#F8FAFC';
-  const borderCol = focused ? '#7B61FF' : (isDarkMode ? 'rgba(99,102,241,0.2)' : '#E2E8F0');
+  const borderColor = focused ? '#7B61FF' : isDarkMode ? '#334155' : '#E2E8F0';
+  const bg = isDarkMode ? 'rgba(15,23,42,0.5)' : '#F8FAFC';
 
   return (
-    <View style={styles.floatingWrapper}>
-      <Animated.Text style={[styles.floatingLabel, labelStyle]}>{label}</Animated.Text>
-      <TextInput
-        placeholder={focused || value ? '' : placeholder}
-        placeholderTextColor="#CBD5E1"
-        value={value}
-        onChangeText={onChangeText}
-        keyboardType={keyboardType}
-        onFocus={() => { setFocused(true); labelAnim.value = withTiming(1, { duration: 180 }); }}
-        onBlur={() => { setFocused(false); if (!value) labelAnim.value = withTiming(0, { duration: 180 }); }}
-        style={[styles.floatingInput, { color: textColor, borderColor: borderCol, backgroundColor: inputBg, borderWidth: focused ? 1.5 : 1 }]}
-      />
+    <View style={formStyles.field}>
+      <Text style={[formStyles.label, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>{label}</Text>
+      <View
+        style={[
+          formStyles.inputWrap,
+          {
+            borderColor,
+            backgroundColor: bg,
+            ...(focused
+              ? Platform.select({
+                  ios: { shadowColor: '#7B61FF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10 },
+                  android: {},
+                })
+              : {}),
+          },
+        ]}
+      >
+        <View style={[formStyles.iconWrap, focused && formStyles.iconWrapActive]}>{icon}</View>
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor="#94A3B8"
+          keyboardType={keyboardType}
+          style={[formStyles.input, { color: textColor }]}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+        />
+      </View>
     </View>
   );
 };
+
+// ─── Animated Submit Button ───────────────────────────────────────────────────
+const SubmitStudyButton = ({
+  onPress,
+  label,
+  loading,
+}: {
+  onPress: () => void;
+  label: string;
+  loading?: boolean;
+}) => {
+  const scale = useSharedValue(1);
+  const brightness = useSharedValue(1);
+
+  const handlePress = () => {
+    if (loading) return;
+    scale.value = withSequence(
+      withSpring(0.95, { damping: 10, stiffness: 400 }),
+      withSpring(1.02, { damping: 8, stiffness: 300 }),
+      withSpring(1, { damping: 12, stiffness: 220 }),
+    );
+    brightness.value = withSequence(withTiming(0.85, { duration: 100 }), withTiming(1, { duration: 200 }));
+    onPress();
+  };
+
+  const btnStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: brightness.value,
+  }));
+
+  return (
+    <Animated.View style={btnStyle}>
+      <TouchableOpacity onPress={handlePress} activeOpacity={0.92} disabled={loading}>
+        <LinearGradient colors={['#7B61FF', '#5152D6']} style={formStyles.submitBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+          {loading ? (
+            <View style={formStyles.shimmerRow}>
+              <View style={formStyles.shimmerDot} />
+              <View style={[formStyles.shimmerDot, { opacity: 0.6 }]} />
+              <View style={[formStyles.shimmerDot, { opacity: 0.3 }]} />
+            </View>
+          ) : (
+            <>
+              <BookOpen size={18} color="#FFFFFF" />
+              <Text style={formStyles.submitBtnText}>{label}</Text>
+            </>
+          )}
+        </LinearGradient>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+// ─── Add Plan FAB ─────────────────────────────────────────────────────────────
+const FAB_BOTTOM = Platform.OS === 'ios' ? 140 : 110;
+
+const AddPlanFAB = ({ onPress }: { onPress: () => void }) => (
+  <TouchableOpacity style={[styles.fab, { bottom: FAB_BOTTOM }]} onPress={onPress} activeOpacity={0.9}>
+    <LinearGradient colors={['#7B61FF', '#5152D6']} style={styles.fabGradient}>
+      <Plus size={26} color="#FFFFFF" />
+    </LinearGradient>
+  </TouchableOpacity>
+);
+
+const formStyles = StyleSheet.create({
+  field: { marginBottom: 16 },
+  label: { fontSize: 12, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 8 },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    minHeight: 54,
+    gap: 10,
+  },
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(123,97,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconWrapActive: { backgroundColor: 'rgba(123,97,255,0.18)' },
+  input: { flex: 1, fontSize: 15, fontWeight: '500', paddingVertical: Platform.OS === 'ios' ? 12 : 10 },
+  submitBtn: {
+    height: 56,
+    borderRadius: 18,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 8,
+  },
+  submitBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 },
+  shimmerRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  shimmerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'white' },
+});
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
@@ -260,15 +386,6 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
   const [isSaving, setIsSaving] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-
-  const modalTranslateY = useSharedValue(SCREEN_HEIGHT);
-  const modalStyle = useAnimatedStyle(() => ({ transform: [{ translateY: modalTranslateY.value }] }));
-
-  useEffect(() => {
-    modalTranslateY.value = showAddModal
-      ? withSpring(0, { damping: 18, stiffness: 120 })
-      : withTiming(SCREEN_HEIGHT, { duration: 300 });
-  }, [showAddModal]);
 
   const textColor = isDarkMode ? Colors.darkText : '#1E293B';
   const modalSurface = isDarkMode ? '#1E293B' : '#FFFFFF';
@@ -418,7 +535,7 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
           <View style={[styles.emptyCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF' }]}>
             <BookOpen size={40} color="#7B61FF" style={{ marginBottom: 12 }} />
             <Text style={[styles.courseTitle, { color: textColor, textAlign: 'center' }]}>Brak planów nauki</Text>
-            <Text style={styles.emptyText}>Dodaj pierwszy plan klikając +</Text>
+            <Text style={styles.emptyText}>Dodaj pierwszy plan przyciskiem + w lewym dolnym rogu</Text>
           </View>
         ) : (
           courses.map((course, index) => (
@@ -435,6 +552,7 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
         )}
         <View style={{ height: 120 }} />
       </ScrollView>
+      <AddPlanFAB onPress={() => setShowAddModal(true)} />
     </View>
   );
 
@@ -555,64 +673,113 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
 
   // ─── RENDER MODAL ─────────────────────────────────────────
   const renderModal = () => (
-    <Modal visible={showAddModal} transparent animationType="none" onRequestClose={() => setShowAddModal(false)}>
-      <TouchableWithoutFeedback onPress={() => setShowAddModal(false)}>
-        <View style={styles.modalOverlay}>
-          <TouchableWithoutFeedback>
-            <Animated.View style={[styles.modalSheet, { backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF' }, modalStyle]}>
-              <View style={styles.modalHandle} />
-              <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                <View style={styles.modalHeader}>
-                  <Text style={[styles.modalTitle, { color: textColor }]}>Nowy plan nauki</Text>
-                  <TouchableOpacity onPress={() => setShowAddModal(false)} style={styles.modalCloseBtn}>
-                    <X size={20} color={textColor} />
-                  </TouchableOpacity>
+    <Modal
+      visible={showAddModal}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={() => setShowAddModal(false)}
+    >
+      <KeyboardAvoidingView
+        style={styles.addModalRoot}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+      >
+        <View style={styles.addModalInner}>
+          <Pressable style={styles.addModalBackdrop} onPress={() => setShowAddModal(false)} />
+
+          <Animated.View entering={SlideInDown.springify().damping(22).stiffness(140)} style={styles.addModalSheet}>
+            <View style={styles.addModalHandle} />
+
+            <View style={styles.addModalHeader}>
+              <LinearGradient colors={['#7B61FF', '#5152D6']} style={styles.addModalHeaderIcon}>
+                <BookOpen size={20} color="#FFFFFF" />
+              </LinearGradient>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.addModalTitle, { color: textColor }]}>Nowy plan nauki</Text>
+                <Text style={styles.addModalSubtitle}>Utwórz plan i dodaj tematy</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowAddModal(false)} style={styles.addModalClose}>
+                <X size={20} color={modalTextMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.addModalScroll}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              automaticallyAdjustKeyboardInsets
+              nestedScrollEnabled
+            >
+            <StudyFormField
+              label="Nazwa kursu"
+              icon={<BookOpen size={18} color="#7B61FF" />}
+              value={newCourseName}
+              onChangeText={setNewCourseName}
+              placeholder="np. Matematyka"
+              textColor={textColor}
+              isDarkMode={isDarkMode}
+            />
+            <StudyFormField
+              label="Data egzaminu"
+              icon={<Calendar size={18} color="#7B61FF" />}
+              value={newCourseDate}
+              onChangeText={setNewCourseDate}
+              placeholder="np. 15 czerwca 2026"
+              textColor={textColor}
+              isDarkMode={isDarkMode}
+            />
+            <StudyFormField
+              label="Godziny nauki"
+              icon={<Clock size={18} color="#F59E0B" />}
+              value={newCourseHours}
+              onChangeText={setNewCourseHours}
+              placeholder="np. 4"
+              textColor={textColor}
+              isDarkMode={isDarkMode}
+              keyboardType="numeric"
+            />
+
+            <View style={styles.topicsSection}>
+              <View style={styles.topicsSectionHeader}>
+                <View style={styles.topicsSectionIcon}>
+                  <Target size={16} color="#7B61FF" />
                 </View>
+                <Text style={[styles.topicsSectionTitle, { color: textColor }]}>Tematy do nauki</Text>
+              </View>
 
-                <FloatingInput label="Nazwa kursu" placeholder="np. Matematyka" value={newCourseName} onChangeText={setNewCourseName} textColor={textColor} isDarkMode={isDarkMode} />
-                <FloatingInput label="Data egzaminu" placeholder="np. 15 czerwca 2026" value={newCourseDate} onChangeText={setNewCourseDate} textColor={textColor} isDarkMode={isDarkMode} />
-                <FloatingInput label="Godziny nauki" placeholder="np. 4" value={newCourseHours} onChangeText={setNewCourseHours} keyboardType="numeric" textColor={textColor} isDarkMode={isDarkMode} />
-
-                <Text style={[styles.sectionTitle, { color: textColor, fontSize: 16, marginBottom: 12 }]}>Tematy do nauki</Text>
-
-                {newTopicsList.map((topic, index) => (
-                  <View key={index} style={styles.topicInputRow}>
+              {newTopicsList.map((topic, index) => (
+                <View key={index} style={styles.topicInputRow}>
+                  <View style={[styles.topicInputWrap, { borderColor: isDarkMode ? '#334155' : '#E2E8F0' }]}>
+                    <BookOpen size={16} color="#94A3B8" />
                     <TextInput
                       placeholder={`Temat ${index + 1}`}
                       placeholderTextColor="#94A3B8"
                       value={topic.name}
                       onChangeText={val => handleChangeTopicName(index, val)}
-                      style={[styles.input, { color: textColor, borderColor: isDarkMode ? 'rgba(99,102,241,0.2)' : '#E2E8F0', backgroundColor: isDarkMode ? 'rgba(15,23,42,0.6)' : '#F8FAFC', flex: 1, marginBottom: 0 }]}
+                      style={[styles.topicInput, { color: textColor }]}
                     />
-                    {newTopicsList.length > 1 && (
-                      <TouchableOpacity onPress={() => handleRemoveTopicField(index)} style={styles.removeTopicBtn}>
-                        <Trash2 size={16} color="white" />
-                      </TouchableOpacity>
-                    )}
                   </View>
-                ))}
+                  {newTopicsList.length > 1 && (
+                    <TouchableOpacity onPress={() => handleRemoveTopicField(index)} style={styles.removeTopicBtn}>
+                      <Trash2 size={16} color="white" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
 
-                <TouchableOpacity style={styles.addTopicBtn} onPress={handleAddTopicField}>
-                  <LinearGradient colors={['#5152D6', '#7B61FF']} style={styles.addTopicBtnGradient}>
-                    <Plus size={16} color="white" />
-                    <Text style={styles.addTopicBtnText}>Dodaj temat</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+              <TouchableOpacity style={styles.addTopicBtn} onPress={handleAddTopicField} activeOpacity={0.85}>
+                <Plus size={16} color="#7B61FF" />
+                <Text style={styles.addTopicBtnText}>Dodaj temat</Text>
+              </TouchableOpacity>
+            </View>
 
-                <TouchableOpacity onPress={handleAddCourse} activeOpacity={0.85} disabled={isSaving}>
-                  <LinearGradient colors={['#7B61FF', '#5152D6']} style={styles.saveBtn}>
-                    {isSaving ? (
-                      <View style={styles.shimmerRow}>
-                        <View style={styles.shimmerDot} /><View style={[styles.shimmerDot, { opacity: 0.6 }]} /><View style={[styles.shimmerDot, { opacity: 0.3 }]} />
-                      </View>
-                    ) : <Text style={styles.saveBtnText}>Zapisz plan</Text>}
-                  </LinearGradient>
-                </TouchableOpacity>
-              </ScrollView>
-            </Animated.View>
-          </TouchableWithoutFeedback>
+            <SubmitStudyButton onPress={handleAddCourse} label="Zapisz plan" loading={isSaving} />
+            </ScrollView>
+          </Animated.View>
         </View>
-      </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </Modal>
   );
 
@@ -731,6 +898,23 @@ const styles = StyleSheet.create({
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   actionBtnText: { fontWeight: '700', fontSize: 13 },
 
+  fab: {
+    position: 'absolute',
+    left: 20,
+    zIndex: 10,
+    ...Platform.select({
+      ios: { shadowColor: '#7B61FF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6 },
+      android: { elevation: 8 },
+    }),
+  },
+  fabGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
   topBarModalBackdrop: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'flex-end' },
   topBarModalSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 24, paddingHorizontal: 24, paddingBottom: Platform.OS === 'ios' ? 90 : 75 },
   topBarModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
@@ -795,29 +979,98 @@ const styles = StyleSheet.create({
   accordionBadge: { backgroundColor: 'rgba(123,97,255,0.12)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   accordionCount: { fontSize: 11, fontWeight: '700', color: '#7B61FF' },
 
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'flex-end' },
-  modalSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: SCREEN_HEIGHT * 0.9, elevation: 20 },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.15)', alignSelf: 'center', marginTop: 12, marginBottom: 4 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  modalTitle: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
-  modalCloseBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.06)', justifyContent: 'center', alignItems: 'center' },
+  addModalRoot: { flex: 1 },
+  addModalInner: { flex: 1, justifyContent: 'flex-end' },
+  addModalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15,23,42,0.5)' },
+  addModalSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    width: '100%',
+    maxHeight: '90%',
+    flexShrink: 1,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 16,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: -6 }, shadowOpacity: 0.12, shadowRadius: 20 },
+      android: { elevation: 16 },
+    }),
+  },
+  addModalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(0,0,0,0.12)',
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  addModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  addModalHeaderIcon: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  addModalTitle: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
+  addModalSubtitle: { fontSize: 13, color: '#94A3B8', marginTop: 2, fontWeight: '500' },
+  addModalClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addModalScroll: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 },
 
-  floatingWrapper: { marginBottom: 16, position: 'relative', paddingTop: 10 },
-  floatingLabel: { position: 'absolute', left: 16, top: 10, fontSize: 15, zIndex: 1 },
-  floatingInput: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 16, paddingTop: 22, paddingBottom: 12, fontSize: 15 },
-
-  input: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 90 : 75, marginBottom: 14, fontSize: 15 },
-  topicInputRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-  addTopicBtn: { borderRadius: 16, overflow: 'hidden', marginBottom: 16 },
-  addTopicBtnGradient: { height: 46, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
-  addTopicBtnText: { color: 'white', fontWeight: '700', fontSize: 14 },
-  removeTopicBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#FF6B6B', justifyContent: 'center', alignItems: 'center' },
-
-  saveBtn: { borderRadius: 18, height: 52, justifyContent: 'center', alignItems: 'center', marginTop: 8, elevation: 8 },
-  saveBtnText: { color: 'white', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 },
-  shimmerRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
-  shimmerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'white' },
+  topicsSection: {
+    marginBottom: 8,
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  topicsSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  topicsSectionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: 'rgba(123,97,255,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topicsSectionTitle: { fontSize: 15, fontWeight: '800' },
+  topicInputRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  topicInputWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    minHeight: 48,
+    backgroundColor: '#FFFFFF',
+  },
+  topicInput: { flex: 1, fontSize: 14, fontWeight: '500', paddingVertical: 10 },
+  addTopicBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(123,97,255,0.25)',
+    borderStyle: 'dashed',
+    backgroundColor: 'rgba(123,97,255,0.04)',
+  },
+  addTopicBtnText: { color: '#7B61FF', fontWeight: '700', fontSize: 14 },
+  removeTopicBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#FF6B6B', justifyContent: 'center', alignItems: 'center' },
 });
 
 export default StudyPlannerScreen;
