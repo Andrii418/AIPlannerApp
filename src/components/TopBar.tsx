@@ -87,7 +87,6 @@ const TopBar: React.FC<TopBarProps> = ({
   );
 };
 
-// Stała eksportowana do kontenerów scrolla - dopasowana do nowej struktury bez SafeAreaView
 export const TOP_BAR_HEIGHT = Platform.OS === 'ios' ? 104 : 60 + (StatusBar.currentHeight ?? 0);
 
 const styles = StyleSheet.create({
@@ -98,7 +97,6 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 100,
     borderBottomWidth: 1,
-    // Dynamiczny padding dopasowany dokładnie tak jak w Dashboard.tsx
     paddingTop: Platform.OS === 'ios' ? 44 : StatusBar.currentHeight ?? 0,
   },
   topBar: {

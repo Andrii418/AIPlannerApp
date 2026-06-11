@@ -50,7 +50,6 @@ import LinearGradient from 'react-native-linear-gradient';
 import { Colors } from '../theme';
 import TopBar, { TOP_BAR_HEIGHT } from '../components/TopBar';
 
-// ─── Animated Progress Bar ────────────────────────────────────────────────────
 const AnimatedProgressBar = ({ progress }: { progress: number }) => {
   const width = useSharedValue(0);
   useEffect(() => {
@@ -66,7 +65,6 @@ const AnimatedProgressBar = ({ progress }: { progress: number }) => {
   );
 };
 
-// ─── Animated Stat Number ────────────────────────────────────────────────────
 const AnimatedNumber = ({ value, style }: { value: number; style: any }) => {
   const [display, setDisplay] = useState(0);
   useEffect(() => {
@@ -83,7 +81,6 @@ const AnimatedNumber = ({ value, style }: { value: number; style: any }) => {
   return <Text style={style}>{display}</Text>;
 };
 
-// ─── Animated Topic Row ───────────────────────────────────────────────────────
 const TopicRow = ({ item, originalIndex, onToggle, textColor, isDarkMode }: any) => {
   const scale = useSharedValue(1);
   const handlePress = () => {
@@ -120,7 +117,6 @@ const TopicRow = ({ item, originalIndex, onToggle, textColor, isDarkMode }: any)
   );
 };
 
-// ─── Course Card ──────────────────────────────────────────────────────────────
 const CourseCard = ({ course, index, textColor, isDarkMode, onView, onDelete }: any) => {
   const getStatusColors = (c: any) =>
     (c.progress || 0) === 100 ? ['#11998e', '#38ef7d'] : ['#7B61FF', '#A855F7'];
@@ -198,7 +194,6 @@ const CourseCard = ({ course, index, textColor, isDarkMode, onView, onDelete }: 
   );
 };
 
-// ─── Clock Button ─────────────────────────────────────────────────────────────
 const ClockButton = ({ onPress }: { onPress: () => void }) => {
   const rotate = useSharedValue(0);
   const iconStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotate.value}deg` }] }));
@@ -216,7 +211,6 @@ const ClockButton = ({ onPress }: { onPress: () => void }) => {
   );
 };
 
-// ─── Study Form Field ─────────────────────────────────────────────────────────
 const StudyFormField = ({
   label,
   icon,
@@ -274,7 +268,6 @@ const StudyFormField = ({
   );
 };
 
-// ─── Animated Submit Button ───────────────────────────────────────────────────
 const SubmitStudyButton = ({
   onPress,
   label,
@@ -325,7 +318,6 @@ const SubmitStudyButton = ({
   );
 };
 
-// ─── Add Plan FAB ─────────────────────────────────────────────────────────────
 const FAB_BOTTOM = Platform.OS === 'ios' ? 140 : 110;
 
 const AddPlanFAB = ({ onPress }: { onPress: () => void }) => (
@@ -372,7 +364,6 @@ const formStyles = StyleSheet.create({
   shimmerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'white' },
 });
 
-// ─── Main Component ───────────────────────────────────────────────────────────
 const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [courses, setCourses] = useState<any[]>([]);
@@ -506,7 +497,6 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
 
   const toggleSection = (idx: number) => setOpenSections(prev => ({ ...prev, [idx]: !prev[idx] }));
 
-  // ─── RENDER LIST ──────────────────────────────────────────
   const renderCourseList = () => (
     <View style={{ flex: 1 }}>
       <TopBar
@@ -556,7 +546,6 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
     </View>
   );
 
-  // ─── RENDER DETAILS ───────────────────────────────────────
   const renderDetails = () => {
     if (!selectedCourse) return null;
     const topicsList = selectedCourse.topicsList || [];
@@ -671,7 +660,6 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
     );
   };
 
-  // ─── RENDER MODAL ─────────────────────────────────────────
   const renderModal = () => (
     <Modal
       visible={showAddModal}
@@ -859,7 +847,6 @@ const StudyPlannerScreen = ({ isDarkMode, toggleDarkMode }: any) => {
   );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 120, paddingHorizontal: 0 },
 
@@ -867,13 +854,11 @@ const styles = StyleSheet.create({
   pageTitle: { fontSize: 28, fontWeight: '800', letterSpacing: -0.5 },
   pageSubtitle: { fontSize: 14, marginTop: 2 },
 
-  // Cards — czyste, bez krawędzi
   cardWrapper: { marginHorizontal: 20, marginBottom: 14 },
   courseCard: {
     borderRadius: 24,
     overflow: 'hidden',
     flexDirection: 'row',
-    // Cień zamiast border
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 12 },
       android: { elevation: 4 },

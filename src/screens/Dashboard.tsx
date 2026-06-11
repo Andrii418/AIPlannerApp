@@ -10,7 +10,7 @@ import {
   Platform,
   Modal,
   TouchableWithoutFeedback,
-  SafeAreaView, // Dodany import SafeAreaView
+  SafeAreaView,
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
@@ -172,7 +172,6 @@ const Dashboard: React.FC<DashboardProps> = ({ isDarkMode, toggleDarkMode }) => 
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} transparent={true} />
 
-      {/* ZMIANA: Bezpieczny nagłówek dla iOS i Android za pomocą SafeAreaView i absolutnego pozycjonowania */}
       <SafeAreaView style={[styles.fixedHeaderContainer, { backgroundColor: theme.bg, borderBottomColor: theme.border }]}>
         <View style={styles.topBar}>
           <TouchableOpacity
@@ -210,7 +209,6 @@ const Dashboard: React.FC<DashboardProps> = ({ isDarkMode, toggleDarkMode }) => 
         </View>
       </SafeAreaView>
 
-      {/* PRZEWIJANA LISTA ELEMENTÓW */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContainer}
@@ -417,7 +415,6 @@ const Dashboard: React.FC<DashboardProps> = ({ isDarkMode, toggleDarkMode }) => 
         <View style={{ height: 130 }} />
       </ScrollView>
 
-      {/* MODAL SETTINGS */}
       <Modal visible={showSettings} transparent animationType="fade" onRequestClose={() => setShowSettings(false)}>
         <TouchableWithoutFeedback onPress={() => setShowSettings(false)}>
           <View style={styles.modalBackdrop}>
@@ -447,7 +444,6 @@ const Dashboard: React.FC<DashboardProps> = ({ isDarkMode, toggleDarkMode }) => 
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* MODAL NOTIFICATIONS */}
       <Modal visible={showNotifications} transparent animationType="fade" onRequestClose={() => setShowNotifications(false)}>
         <TouchableWithoutFeedback onPress={() => setShowNotifications(false)}>
           <View style={styles.modalBackdrop}>
@@ -506,7 +502,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1
   },
-  // POPRAWKA: Usunięte sztywne marginesy, dodane pozycjonowanie absolutne typu 'fixed'
   fixedHeaderContainer: {
     position: 'absolute',
     top: 0,
@@ -523,7 +518,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     height: 60,
   },
-  // POPRAWKA: scrollContainer zaczyna się teraz zaraz pod paskiem (60px paska + zapas na safe area)
   scrollContainer: {
     paddingHorizontal: 24,
     paddingTop: Platform.OS === 'ios' ? 140 : 125,

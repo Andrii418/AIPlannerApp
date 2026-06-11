@@ -146,7 +146,6 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
 
-      {/* ─── TOPBAR — identyczny jak w Dashboard ─── */}
       <TopBar
         isDarkMode={isDarkMode}
         toggleDarkMode={toggleDarkMode}
@@ -161,7 +160,6 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
           contentContainerStyle={[styles.scrollContent, { paddingTop: TOP_BAR_HEIGHT + 12 }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         >
-          {/* Welcome */}
           <View style={styles.welcomeSection}>
             <View>
               <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>Witaj z powrotem,</Text>
@@ -173,7 +171,6 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
             </View>
           </View>
 
-          {/* Stats */}
           <View style={styles.statsContainer}>
             {[
               { icon: <Target size={18} color={colors.primary} />, bg: colors.primary + '20', value: pendingTasks.length, label: 'Aktywne' },
@@ -188,7 +185,6 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
             ))}
           </View>
 
-          {/* Search + Filters */}
           <View style={styles.searchSection}>
             <View style={[styles.searchContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <Search size={16} color={theme.textSecondary} />
@@ -210,7 +206,6 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
             </ScrollView>
           </View>
 
-          {/* Tasks */}
           <View style={styles.tasksSection}>
             {pendingTasks.map((item) => (
               <View key={item.id} style={[styles.taskCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -260,7 +255,6 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
           <View style={{ height: 160 }} />
         </ScrollView>
 
-        {/* BOTTOM INPUT PANEL */}
         <View style={[styles.inputPanelWrapper, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
           <View style={[styles.inputContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
             <TextInput
@@ -283,7 +277,6 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
         </View>
       </KeyboardAvoidingView>
 
-      {/* SETTINGS MODAL */}
       <Modal visible={showSettings} transparent animationType="fade" onRequestClose={() => setShowSettings(false)}>
         <TouchableWithoutFeedback onPress={() => setShowSettings(false)}>
           <View style={styles.modalBackdrop}>
@@ -308,7 +301,6 @@ const TaskScreen = ({ isDarkMode, toggleDarkMode }: any) => {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* NOTIFICATIONS MODAL */}
       <Modal visible={showNotifications} transparent animationType="fade" onRequestClose={() => setShowNotifications(false)}>
         <TouchableWithoutFeedback onPress={() => setShowNotifications(false)}>
           <View style={styles.modalBackdrop}>

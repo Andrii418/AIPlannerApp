@@ -55,7 +55,7 @@ const AIPlannerScreen: React.FC = () => {
   const db = getFirestore();
   const user = auth.currentUser;
 
-  // Pobieramy tryb początkowy. Jeśli 'selection', pozwalamy na zmianę.
+  // Pobieramy tryb początkowy
   const initialMode = route.params?.mode ?? 'selection';
   const isLocked = initialMode === 'study' || initialMode === 'travel';
 

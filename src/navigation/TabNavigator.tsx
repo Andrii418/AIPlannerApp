@@ -152,7 +152,6 @@ const TabIcon = ({ name, color, size }: any) => {
   return <Icon color={color} size={size} />;
 };
 
-// Props przekazywane z App.tsx
 interface TabNavigatorProps {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
